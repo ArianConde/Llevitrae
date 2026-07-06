@@ -1,0 +1,3365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1e3a8a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="./assets/llevitrae.png">
+  <title>LLevitrae — Repartidor</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Leaflet Routing -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css">
+  <script src="https://cdn.jsdelivr.net/npm/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
+
+  <!-- Icons + Font -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- QR -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  
+  <!-- 🔴 HTML5-QRCODE PARA ANDROID WEBVIEW -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:    #10b981;
+      --green-dk: #059669;
+      --green-lt: #d1fae5;
+      --green-bg: #ecfdf5;
+      --blue:     #3b82f6;
+      --blue-lt:  #dbeafe;
+      --orange:   #f59e0b;
+      --orange-bg: #fffbeb;
+      --red:      #ef4444;
+      --red-bg:   #fef2f2;
+      --gray-50:  #f8fafc;
+      --gray-100: #f1f5f9;
+      --gray-200: #e2e8f0;
+      --gray-300: #cbd5e1;
+      --gray-400: #94a3b8;
+      --gray-500: #64748b;
+      --gray-600: #475569;
+      --gray-700: #334155;
+      --gray-800: #1e293b;
+      --gray-900: #0f172a;
+      --nav-h:    60px;
+      --topbar-h: 56px;
+      --radius:   16px;
+      --shadow:   0 4px 24px rgba(0,0,0,.08);
+      --shadow-lg: 0 8px 40px rgba(0,0,0,.12);
+    }
+
+    html, body { 
+      height: 100%; 
+      font-family: 'Nunito', sans-serif; 
+      background: var(--gray-50); 
+      color: var(--gray-900);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 10px; }
+
+    #topbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: var(--topbar-h);
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--gray-200);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 12px;
+      box-shadow: 0 1px 8px rgba(0,0,0,.04);
+    }
+    .topbar-logo { display: none; }
+    
+    .topbar-center {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      justify-content: center;
+    }
+    .topbar-right { 
+      display: flex; 
+      align-items: center; 
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .topbar-avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--green-lt); border: 2px solid var(--green);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 800; color: var(--green);
+      cursor: pointer; overflow: hidden;
+      transition: transform .2s;
+      flex-shrink: 0;
+    }
+    .topbar-avatar:hover { transform: scale(1.05); }
+    .topbar-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+    
+    .topbar-name { 
+      font-size: 13px; 
+      font-weight: 800; 
+      color: var(--gray-900);
+      white-space: nowrap;
+    }
+    .topbar-role {
+      font-size: 10px; font-weight: 800; background: var(--green-lt);
+      color: var(--green); padding: 2px 10px; border-radius: 20px;
+      white-space: nowrap;
+    }
+    .topbar-code {
+      font-size: 10px; font-weight: 800; color: var(--gray-400);
+      letter-spacing: 1px; cursor: pointer; transition: color .2s;
+      white-space: nowrap;
+    }
+    .topbar-code:hover { color: var(--green); }
+
+    .avail-toggle {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--gray-100); border-radius: 20px;
+      padding: 5px 10px; cursor: pointer; border: none;
+      font-family: 'Nunito', sans-serif; font-size: 10px; font-weight: 800;
+      transition: all .3s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .avail-toggle.active { 
+      background: var(--green-lt); 
+      color: var(--green); 
+      box-shadow: 0 0 0 2px var(--green);
+    }
+    .avail-toggle.inactive { 
+      background: var(--red-bg); 
+      color: var(--red);
+      box-shadow: 0 0 0 2px var(--red);
+    }
+    .avail-toggle.occupied {
+      background: #fef3c7;
+      color: #d97706;
+      box-shadow: 0 0 0 2px #f59e0b;
+    }
+    .avail-toggle:disabled { opacity: 0.7; cursor: not-allowed; }
+    .avail-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--gray-400); flex-shrink: 0;
+      transition: background .3s;
+    }
+    .avail-toggle.active .avail-dot { background: var(--green); }
+    .avail-toggle.inactive .avail-dot { background: var(--red); }
+    .avail-toggle.occupied .avail-dot { background: #f59e0b; }
+    .avail-toggle .avail-label { display: inline; }
+
+    #main {
+      position: fixed;
+      top: var(--topbar-h); left: 0; right: 0;
+      bottom: var(--nav-h);
+      overflow: hidden;
+    }
+
+    #bottomNav {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+      height: var(--nav-h);
+      background: rgba(255,255,255,.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-top: 1px solid var(--gray-200);
+      display: flex; align-items: stretch;
+      box-shadow: 0 -4px 20px rgba(0,0,0,.06);
+    }
+    .nav-item {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 2px;
+      border: none; background: transparent; cursor: pointer;
+      color: var(--gray-400); font-family: 'Nunito', sans-serif;
+      font-size: 10px; font-weight: 700; transition: all .3s;
+      padding: 6px 0; position: relative;
+      border-radius: 0;
+    }
+    .nav-item i { font-size: 22px; transition: all .3s; }
+    .nav-item.active { color: var(--green); }
+    .nav-item.active i { transform: translateY(-3px); }
+    .nav-item:active { transform: scale(.95); }
+    .nav-badge {
+      position: absolute; top: 6px; right: 50%;
+      transform: translateX(calc(50% + 20px));
+      background: var(--red); color: #fff;
+      min-width: 18px; height: 18px; border-radius: 20px;
+      font-size: 9px; font-weight: 800;
+      display: none; align-items: center; justify-content: center;
+      padding: 0 5px;
+      box-shadow: 0 2px 8px rgba(239,68,68,.3);
+    }
+
+    .page {
+      position: absolute; inset: 0;
+      display: none; flex-direction: column;
+      overflow-y: auto; overflow-x: hidden;
+      background: var(--gray-50);
+    }
+    .page.active { display: flex; }
+
+    #mapPage { overflow: hidden; }
+    #map { 
+      width: 100% !important; 
+      height: 100% !important; 
+      position: absolute !important; 
+      inset: 0; 
+      background: #e8edf2;
+    }
+
+    .map-status {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      z-index: 50; background: rgba(255,255,255,.95);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: 30px; padding: 6px 16px;
+      box-shadow: var(--shadow); font-size: 11px; font-weight: 800;
+      display: flex; align-items: center; gap: 6px;
+      border: 1px solid var(--gray-200);
+      white-space: nowrap;
+    }
+    .map-status-dot { 
+      width: 8px; height: 8px; border-radius: 50%;
+      transition: background .3s;
+    }
+    .map-status.on .map-status-dot { background: var(--green); box-shadow: 0 0 12px rgba(16,185,129,.4); }
+    .map-status.off .map-status-dot { background: var(--red); box-shadow: 0 0 12px rgba(239,68,68,.4); }
+    .map-status.occupied .map-status-dot { background: #f59e0b; box-shadow: 0 0 12px rgba(245,158,11,.4); }
+    .map-status.on { color: var(--green); }
+    .map-status.off { color: var(--red); }
+    .map-status.occupied { color: #d97706; }
+
+    .map-fab {
+      position: absolute; bottom: 20px; right: 20px; z-index: 50;
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--green); color: #fff; border: none;
+      font-size: 22px; cursor: pointer; 
+      box-shadow: 0 4px 20px rgba(16,185,129,.45);
+      display: flex; align-items: center; justify-content: center;
+      transition: all .3s;
+    }
+    .map-fab:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(16,185,129,.55); }
+    .map-fab:active { transform: scale(.95); }
+
+    .stats-bar {
+      position: absolute; bottom: 20px; left: 20px; z-index: 50;
+      background: rgba(255,255,255,.95);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: 14px; padding: 10px 14px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--gray-200);
+    }
+    .stats-bar .stat { 
+      font-size: 11px; font-weight: 700; color: var(--gray-600); 
+      display: flex; align-items: center; gap: 6px;
+    }
+    .stats-bar .stat span { 
+      color: var(--green); font-size: 16px; font-weight: 900; 
+    }
+
+    #routeInfo {
+      display: none !important;
+    }
+
+    .order-marker {
+      background: #fff;
+      border-radius: 50%;
+      border: 3px solid var(--orange);
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 16px rgba(0,0,0,.2);
+      font-size: 18px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .order-marker:hover {
+      transform: scale(1.12);
+      box-shadow: 0 6px 24px rgba(0,0,0,.25);
+    }
+    .leaflet-popup-content-wrapper {
+      border-radius: 16px !important; 
+      box-shadow: var(--shadow-lg) !important;
+      font-family: 'Nunito', sans-serif !important;
+      padding: 6px !important;
+      border: 1px solid var(--gray-200);
+    }
+    .leaflet-popup-content {
+      margin: 8px 12px !important;
+      min-width: 200px;
+      max-width: 300px;
+    }
+
+    .popup-order {
+      font-family: 'Nunito', sans-serif;
+      padding: 2px 0;
+    }
+    .popup-order .popup-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2px;
+    }
+    .popup-order .popup-code {
+      font-size: 13px;
+      font-weight: 900;
+      color: var(--green);
+      letter-spacing: .3px;
+    }
+    .popup-order .popup-urgency {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--gray-500);
+      background: var(--gray-100);
+      padding: 2px 10px;
+      border-radius: 20px;
+    }
+    .popup-order .popup-urgency.urgente {
+      background: #fef3c7;
+      color: #d97706;
+    }
+
+    .popup-order .popup-meta {
+      display: flex;
+      gap: 12px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--gray-400);
+      margin-bottom: 6px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+    .popup-order .popup-meta span {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .popup-order .popup-meta i {
+      font-size: 12px;
+    }
+
+    .popup-order .popup-desc {
+      margin-bottom: 6px;
+    }
+    .popup-order .popup-desc-item {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--gray-800);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 1px;
+    }
+    .popup-order .popup-desc-item i {
+      font-size: 13px;
+      color: var(--green);
+      width: 16px;
+      text-align: center;
+    }
+
+    .popup-order .popup-address {
+      margin: 4px 0;
+      padding: 6px 10px;
+      border-radius: 8px;
+    }
+    .popup-order .popup-address.origin {
+      background: var(--blue-lt);
+      border-left: 3px solid var(--blue);
+    }
+    .popup-order .popup-address.dest {
+      background: var(--green-lt);
+      border-left: 3px solid var(--green);
+    }
+    .popup-order .popup-address-label {
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .popup-order .popup-address.origin .popup-address-label {
+      color: var(--blue);
+    }
+    .popup-order .popup-address.dest .popup-address-label {
+      color: var(--green);
+    }
+    .popup-order .popup-address-text {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gray-800);
+      margin-top: 1px;
+      line-height: 1.3;
+    }
+
+    .popup-order .popup-btn {
+      width: 100%;
+      padding: 9px;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Nunito', sans-serif;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 5px;
+      letter-spacing: .3px;
+    }
+    .popup-order .popup-btn.accept {
+      background: var(--green);
+      color: #fff;
+      box-shadow: 0 2px 12px rgba(16,185,129,.3);
+    }
+    .popup-order .popup-btn.accept:hover:not(:disabled) {
+      background: var(--green-dk);
+      transform: scale(1.02);
+      box-shadow: 0 4px 20px rgba(16,185,129,.4);
+    }
+    .popup-order .popup-btn.accept:active:not(:disabled) {
+      transform: scale(.98);
+    }
+    .popup-order .popup-btn.accept:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .popup-order .popup-btn.route {
+      background: var(--gray-100);
+      color: var(--gray-600);
+      border: 1.5px solid var(--gray-200);
+      margin-top: 3px;
+    }
+    .popup-order .popup-btn.route:hover {
+      background: var(--gray-200);
+    }
+    .popup-order .popup-btn i {
+      font-size: 15px;
+    }
+
+    .page-header {
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--gray-200);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .page-header h2 { 
+      font-size: 1.05rem; font-weight: 900; 
+      display: flex; align-items: center; gap: 8px;
+    }
+    .page-header p { 
+      font-size: 11px; color: var(--gray-400); font-weight: 600; 
+      margin-top: 2px; 
+    }
+
+    .avail-card {
+      background: #fff;
+      border-radius: var(--radius);
+      border: 1px solid var(--gray-200);
+      margin: 10px 14px 0;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,.04);
+      transition: all .25s;
+    }
+    .avail-card:hover {
+      box-shadow: var(--shadow);
+      transform: translateY(-2px);
+    }
+    .avail-card-head {
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--gray-100);
+      background: var(--gray-50);
+    }
+    .avail-code { 
+      font-size: 13px; font-weight: 900; color: var(--green); 
+      letter-spacing: .5px;
+    }
+    .avail-date { 
+      font-size: 10px; color: var(--gray-400); font-weight: 600; 
+    }
+    .urgency-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 10px; font-weight: 800;
+    }
+    .urg-normal { background: var(--gray-100); color: var(--gray-600); }
+    .urg-urgente { background: #fef3c7; color: #d97706; }
+    .urg-fragil { background: #fefce8; color: #854d0e; }
+    .urg-refrigerado { background: var(--blue-lt); color: var(--blue); }
+
+    .trip-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 10px; font-weight: 800;
+    }
+    .trip-oneway { background: var(--blue-lt); color: var(--blue); }
+    .trip-round { background: #ede9fe; color: #7c3aed; }
+
+    .avail-distance {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 10px; font-weight: 800;
+      background: var(--gray-100); color: var(--gray-600);
+    }
+
+    .avail-body { padding: 12px 14px 14px; }
+    .avail-row {
+      display: flex; gap: 8px; align-items: flex-start;
+      font-size: 11px; color: var(--gray-600); font-weight: 600;
+      margin-bottom: 4px;
+      line-height: 1.4;
+    }
+    .avail-row i { 
+      color: var(--green); margin-top: 1px; flex-shrink: 0; 
+      width: 14px; text-align: center;
+    }
+    .avail-row:last-of-type { margin-bottom: 0; }
+
+    .avail-actions {
+      display: flex; gap: 6px; padding: 0 14px 14px;
+      flex-wrap: wrap;
+    }
+    .btn-accept {
+      flex: 2; padding: 10px; background: var(--green); color: #fff;
+      border: none; border-radius: 10px;
+      font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 800;
+      cursor: pointer; transition: all .2s;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      min-width: 80px;
+    }
+    .btn-accept:hover:not(:disabled) { 
+      background: var(--green-dk); 
+      transform: scale(1.02);
+      box-shadow: 0 4px 16px rgba(16,185,129,.35);
+    }
+    .btn-accept:active:not(:disabled) { transform: scale(.98); }
+    .btn-accept:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: var(--gray-400);
+    }
+    .btn-reject {
+      flex: 1; padding: 10px; background: var(--gray-100); 
+      color: var(--gray-600); border: 1.5px solid var(--gray-200);
+      border-radius: 10px;
+      font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: all .2s;
+      min-width: 60px;
+    }
+    .btn-reject:hover { background: var(--gray-200); }
+    .btn-preview-route {
+      flex: 1; padding: 10px; background: var(--blue-lt); color: var(--blue);
+      border: 1.5px solid var(--blue); border-radius: 10px;
+      font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: all .2s;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+      min-width: 60px;
+    }
+    .btn-preview-route:hover { 
+      background: var(--blue); color: #fff; 
+      box-shadow: 0 4px 16px rgba(59,130,246,.3);
+    }
+
+    .empty-state { 
+      text-align: center; padding: 50px 20px; 
+      background: #fff; margin: 16px 14px; 
+      border-radius: var(--radius);
+      border: 1px solid var(--gray-200);
+    }
+    .empty-icon { font-size: 48px; color: var(--gray-200); margin-bottom: 10px; }
+    .empty-title { font-size: 1rem; font-weight: 800; color: var(--gray-600); }
+    .empty-sub { font-size: 12px; color: var(--gray-400); margin-top: 4px; line-height: 1.6; }
+
+    .delivery-card {
+      background: #fff;
+      border-radius: var(--radius);
+      border: 1px solid var(--gray-200);
+      margin: 10px 14px 0;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,.04);
+      transition: all .25s;
+    }
+    .delivery-card:hover { box-shadow: var(--shadow); }
+
+    .delivery-head {
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--gray-100);
+      background: var(--gray-50);
+    }
+    .delivery-code { 
+      font-size: 13px; font-weight: 900; color: var(--green); 
+      letter-spacing: .5px;
+    }
+    .delivery-status {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 10px; font-weight: 800;
+    }
+    .status-active { background: var(--blue-lt); color: var(--blue); }
+    .status-done { background: var(--green-lt); color: var(--green); }
+    .status-verified { background: #fef3c7; color: #d97706; }
+    .status-cancelled { background: var(--red-bg); color: var(--red); }
+    .status-waiting-back { background: #fef3c7; color: #d97706; }
+    .status-pickup-verified { background: #dbeafe; color: #1d4ed8; }
+
+    .delivery-body { padding: 12px 14px 14px; }
+    .delivery-row {
+      display: flex; gap: 8px; align-items: flex-start;
+      font-size: 11px; color: var(--gray-600); font-weight: 600;
+      margin-bottom: 4px;
+      line-height: 1.4;
+    }
+    .delivery-row i { 
+      color: var(--green); margin-top: 1px; flex-shrink: 0;
+      width: 14px; text-align: center;
+    }
+
+    .client-info {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--gray-50); border-radius: 10px; 
+      padding: 8px 12px; margin-top: 8px;
+      border: 1px solid var(--gray-100);
+    }
+    .client-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--blue-lt); color: var(--blue);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800; flex-shrink: 0;
+    }
+    .client-name { font-size: 12px; font-weight: 800; }
+    .client-sub { font-size: 10px; color: var(--gray-400); font-weight: 600; }
+
+    .verify-instruction {
+      background: #fffbeb;
+      border: 1.5px solid #fcd34d;
+      border-radius: 10px;
+      padding: 8px 12px;
+      margin: 6px 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .verify-instruction .vicon {
+      font-size: 20px;
+      color: #d97706;
+    }
+    .verify-instruction .vtext {
+      font-size: 11px;
+      font-weight: 600;
+      color: #92400e;
+      line-height: 1.4;
+    }
+    .verify-instruction .vtext strong {
+      display: block;
+      font-size: 12px;
+      color: #78350f;
+    }
+
+    .delivery-actions {
+      display: flex; gap: 6px; padding: 0 14px 14px; flex-wrap: wrap;
+    }
+    .btn-verify {
+      flex: 1; padding: 10px; background: #fef3c7; color: #d97706;
+      border: 1.5px solid #fcd34d; border-radius: 10px;
+      font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: all .2s;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      min-width: 70px;
+    }
+    .btn-verify:hover { 
+      background: #fde68a; 
+      transform: scale(1.02);
+    }
+    .btn-deliver {
+      flex: 1; padding: 10px; background: var(--green); color: #fff;
+      border: none; border-radius: 10px;
+      font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 800;
+      cursor: pointer; transition: all .2s;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      min-width: 70px;
+    }
+    .btn-deliver:hover { 
+      background: var(--green-dk);
+      box-shadow: 0 4px 16px rgba(16,185,129,.3);
+    }
+    .btn-deliver:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-cancel-delivery {
+      flex: 1; padding: 10px; background: #fff; color: var(--red);
+      border: 1.5px solid #fca5a5; border-radius: 10px;
+      font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: all .2s;
+      min-width: 60px;
+    }
+    .btn-cancel-delivery:hover { 
+      background: var(--red-bg); 
+      border-color: var(--red);
+    }
+    .btn-cancel-delivery.hidden { display: none; }
+
+    #profilePage { background: var(--gray-50); }
+
+    .profile-hero {
+      background: linear-gradient(145deg, var(--green), var(--green-dk));
+      padding: 28px 16px 48px;
+      text-align: center;
+      position: relative;
+      border-radius: 0 0 28px 28px;
+      box-shadow: 0 8px 32px rgba(16,185,129,.25);
+    }
+    .profile-avatar-wrap { position: relative; display: inline-block; }
+    .profile-avatar {
+      width: 80px; height: 80px; border-radius: 50%;
+      border: 4px solid rgba(255,255,255,.5);
+      background: rgba(255,255,255,.15);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; font-weight: 900; color: #fff;
+      overflow: hidden; margin: 0 auto 6px; cursor: pointer;
+      transition: transform .2s;
+      box-shadow: 0 4px 20px rgba(0,0,0,.1);
+    }
+    .profile-avatar:hover { transform: scale(1.04); }
+    .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar-edit-btn {
+      position: absolute; bottom: 4px; right: -2px;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: #fff; border: 2px solid var(--green);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: var(--green); 
+      box-shadow: 0 2px 12px rgba(0,0,0,.15);
+      transition: transform .2s;
+    }
+    .avatar-edit-btn:hover { transform: scale(1.1); }
+    .profile-name { 
+      font-size: 1.15rem; font-weight: 900; color: #fff; 
+      margin-bottom: 2px; text-shadow: 0 1px 8px rgba(0,0,0,.1);
+    }
+    .profile-email { 
+      font-size: 12px; color: rgba(255,255,255,.8); 
+      font-weight: 600;
+    }
+    .profile-code {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,.15);
+      backdrop-filter: blur(4px);
+      border-radius: 40px; padding: 4px 14px 4px 12px;
+      font-size: 13px; font-weight: 900; color: #fff;
+      margin-top: 6px; letter-spacing: 2px;
+      cursor: pointer; border: 1px solid rgba(255,255,255,.1);
+      transition: background .2s;
+    }
+    .profile-code:hover { background: rgba(255,255,255,.25); }
+
+    .qr-mini-wrap {
+      position: absolute; top: 14px; right: 14px;
+      background: rgba(255,255,255,.1);
+      backdrop-filter: blur(4px);
+      border-radius: 10px; padding: 4px 4px 2px;
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center;
+      border: 1px solid rgba(255,255,255,.08);
+      transition: background .2s;
+    }
+    .qr-mini-wrap:hover { background: rgba(255,255,255,.2); }
+    .qr-mini-wrap #qrMini { display: flex; align-items: center; justify-content: center; }
+    .qr-mini-wrap #qrMini canvas {
+      display: block; border-radius: 6px;
+      max-width: 44px; max-height: 44px;
+    }
+    .qr-mini-label { 
+      font-size: 7px; font-weight: 800; 
+      color: rgba(255,255,255,.8); 
+      text-align: center; margin-top: 1px; 
+    }
+
+    .profile-cards { padding: 14px; margin-top: -24px; }
+    .pcard {
+      background: #fff; border-radius: var(--radius);
+      border: 1px solid var(--gray-200); margin-bottom: 10px;
+      overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.04);
+    }
+    .pcard-title {
+      padding: 12px 14px 8px; font-size: 10px; font-weight: 900;
+      color: var(--gray-400); text-transform: uppercase; letter-spacing: .8px;
+      border-bottom: 1px solid var(--gray-100);
+      background: var(--gray-50);
+    }
+    .prow {
+      display: flex; align-items: center; padding: 10px 14px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+    .prow:last-child { border-bottom: none; }
+    .prow-icon { color: var(--green); font-size: 16px; width: 24px; flex-shrink: 0; }
+    .prow-content { flex: 1; min-width: 0; }
+    .prow-label { 
+      font-size: 9px; font-weight: 800; color: var(--gray-400); 
+      text-transform: uppercase; letter-spacing: .5px;
+    }
+    .prow-val { font-size: 12px; font-weight: 700; color: var(--gray-900); }
+
+    .stats-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; 
+      padding: 0 14px; margin-top: -18px;
+    }
+    .stat-card {
+      background: #fff; border-radius: var(--radius); padding: 14px;
+      border: 1px solid var(--gray-200); text-align: center;
+      box-shadow: 0 2px 12px rgba(0,0,0,.04);
+    }
+    .stat-val { font-size: 1.8rem; font-weight: 900; color: var(--green); }
+    .stat-label { font-size: 10px; font-weight: 700; color: var(--gray-400); margin-top: 2px; }
+
+    .panic-section {
+      background: #fff; border-radius: var(--radius);
+      border: 1px solid var(--gray-200); padding: 14px 16px;
+      margin-bottom: 10px; box-shadow: 0 2px 12px rgba(0,0,0,.04);
+      text-align: center;
+    }
+    .panic-section .panic-title {
+      font-size: 13px; font-weight: 800; color: var(--gray-700);
+      margin-bottom: 3px;
+    }
+    .panic-section .panic-desc {
+      font-size: 11px; color: var(--gray-400); font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .panic-btn {
+      width: 100%; padding: 12px; border: none;
+      border-radius: var(--radius);
+      font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 800;
+      cursor: pointer; transition: all .3s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .panic-btn.inactive {
+      background: var(--red); color: #fff;
+      box-shadow: 0 4px 20px rgba(239,68,68,.35);
+    }
+    .panic-btn.inactive:hover {
+      background: #dc2626; transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(239,68,68,.4);
+    }
+    .panic-btn.active {
+      background: #dc2626; color: #fff;
+      animation: pulse 1s infinite;
+      box-shadow: 0 4px 28px rgba(239,68,68,.5);
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+    .panic-status-text {
+      font-size: 12px; font-weight: 700; margin-top: 6px;
+    }
+    .panic-status-text.active { color: var(--red); animation: pulseText 1.5s infinite; }
+    .panic-status-text.inactive { color: var(--gray-400); }
+    @keyframes pulseText {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .5; }
+    }
+
+    .save-btn {
+      width: 100%; padding: 12px; 
+      background: linear-gradient(145deg, var(--green), var(--green-dk));
+      color: #fff; border: none; border-radius: var(--radius);
+      font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 800;
+      cursor: pointer; margin-top: 4px;
+      box-shadow: 0 4px 20px rgba(16,185,129,.3);
+      transition: all .2s;
+    }
+    .save-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(16,185,129,.35); }
+    .logout-btn {
+      width: 100%; padding: 12px; background: #fff;
+      color: var(--red); border: 1.5px solid #fca5a5;
+      border-radius: var(--radius);
+      font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 800;
+      cursor: pointer; margin-top: 6px;
+      transition: all .2s;
+    }
+    .logout-btn:hover { background: var(--red-bg); border-color: var(--red); }
+
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.6); z-index: 500;
+      align-items: center; justify-content: center; padding: 16px;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+    .overlay.show { display: flex; animation: fadeIn .25s ease; }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .overlay-box {
+      background: #fff; border-radius: 20px; padding: 20px 16px;
+      width: 100%; max-width: 400px; text-align: center;
+      box-shadow: 0 24px 64px rgba(0,0,0,.25); position: relative;
+      animation: scaleIn .3s ease;
+    }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(.92); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .overlay-close {
+      position: absolute; top: 10px; right: 10px;
+      background: var(--gray-100); border: none; border-radius: 50%;
+      width: 28px; height: 28px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; color: var(--gray-600);
+      transition: background .2s;
+    }
+    .overlay-close:hover { background: var(--gray-200); }
+    .overlay-box h3 { 
+      font-size: 1rem; font-weight: 900; margin-bottom: 3px; 
+    }
+    .overlay-box p { 
+      font-size: 11px; color: var(--gray-400); font-weight: 600; 
+      margin-bottom: 6px; 
+    }
+
+    .overlay-box #qrBig {
+      display: flex; align-items: center; justify-content: center;
+      margin: 10px auto;
+    }
+    .overlay-box #qrBig canvas {
+      display: block; border-radius: 12px;
+      max-width: 180px; max-height: 180px;
+    }
+    .user-code-big {
+      font-size: 1.4rem; font-weight: 900; letter-spacing: 4px;
+      color: var(--green); margin: 4px 0 12px;
+      font-family: 'Courier New', monospace;
+    }
+
+    .verify-input-group {
+      display: flex; gap: 6px; margin: 10px 0;
+    }
+    .verify-input-group input {
+      flex: 1; padding: 10px 12px;
+      border: 2px solid var(--gray-200); border-radius: 10px;
+      font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 3px;
+      outline: none; text-align: center;
+      transition: border-color .2s;
+    }
+    .verify-input-group input:focus { border-color: var(--green); }
+    .verify-input-group button {
+      padding: 10px 16px;
+      background: var(--green); color: #fff;
+      border: none; border-radius: 10px;
+      font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 800;
+      cursor: pointer; transition: all .2s;
+    }
+    .verify-input-group button:hover { background: var(--green-dk); }
+    .verify-input-group button:disabled { opacity: .5; cursor: not-allowed; }
+
+    .verify-result {
+      padding: 10px; border-radius: 10px; margin-top: 6px;
+      font-weight: 700; font-size: 13px;
+      display: none;
+    }
+    .verify-result.success { 
+      display: block; background: var(--green-lt); color: var(--green);
+      border: 1px solid #6ee7b7;
+    }
+    .verify-result.error { 
+      display: block; background: var(--red-bg); color: var(--red);
+      border: 1px solid #fca5a5;
+    }
+    .verify-result.partial {
+      display: block; background: #fef3c7; color: #d97706;
+      border: 1px solid #fcd34d;
+    }
+
+    .scanner-wrap {
+      position: relative;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #000;
+      aspect-ratio: 1/1;
+      max-width: 280px;
+      margin: 10px auto;
+    }
+    #scannerContainer {
+      width: 100%;
+      height: 100%;
+      min-height: 250px;
+    }
+    #scannerContainer video {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover;
+    }
+    .scan-frame {
+      position: absolute;
+      inset: 14px;
+      border: 3px solid var(--green);
+      border-radius: 10px;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .scan-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg,transparent,var(--green),transparent);
+      animation: scanAnim 2s linear infinite;
+      z-index: 11;
+    }
+    @keyframes scanAnim {
+      0% { top: 0; }
+      100% { top: 100%; }
+    }
+
+    .scan-result {
+      border-radius: 12px; padding: 14px; margin-top: 10px; text-align: left;
+    }
+    .scan-result.ok  { background: var(--green-lt); border: 1.5px solid #6ee7b7; }
+    .scan-result.err { background: var(--red-bg); border: 1.5px solid #fca5a5; }
+    .scan-result-name { font-size: 0.95rem; font-weight: 900; margin-bottom: 3px; }
+    .scan-result.ok .scan-result-name { color: var(--green); }
+    .scan-result.err .scan-result-name { color: var(--red); }
+    .scan-result-row { 
+      display: flex; gap: 5px; font-size: 11px; font-weight: 600; 
+      color: var(--gray-600); margin-top: 3px; 
+    }
+    .scan-result-row i { color: var(--green); }
+    .scan-result-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 800;
+      margin-top: 6px;
+    }
+    .badge-client { background: var(--blue-lt); color: var(--blue); }
+    .badge-rider  { background: var(--green-lt); color: var(--green); }
+
+    .manual-search-row {
+      display: flex; gap: 6px; margin-top: 6px; align-items: center;
+    }
+    .manual-search-row input {
+      flex: 1; padding: 8px 12px;
+      border: 1.5px solid var(--gray-200); border-radius: 10px;
+      font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 600;
+      outline: none; background: #fff; color: var(--gray-900);
+    }
+    .manual-search-row input:focus { border-color: var(--green); }
+    .manual-search-row button {
+      background: var(--green); color: #fff;
+      border: none; border-radius: 10px; padding: 8px 14px;
+      font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 800;
+      cursor: pointer; transition: all .2s;
+    }
+    .manual-search-row button:hover { background: var(--green-dk); }
+
+    .ov-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .ov-actions button {
+      flex: 1; padding: 10px; border-radius: 10px;
+      font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 800;
+      cursor: pointer; transition: all .2s;
+    }
+    .ov-actions button:hover { transform: scale(1.02); }
+    .ov-btn-ghost { 
+      background: var(--gray-100); color: var(--gray-600); 
+      border: 1.5px solid var(--gray-200); 
+    }
+    .ov-btn-ghost:hover { background: var(--gray-200); }
+    .ov-btn-main { 
+      background: var(--green); color: #fff; border: none; 
+    }
+    .ov-btn-main:hover { background: var(--green-dk); }
+
+    #toast {
+      position: fixed; bottom: calc(var(--nav-h) + 14px); left: 50%;
+      transform: translateX(-50%) translateY(14px);
+      background: var(--gray-900); color: #fff; 
+      padding: 10px 20px; border-radius: 30px;
+      font-size: 12px; font-weight: 700;
+      opacity: 0; transition: all .35s; z-index: 600;
+      pointer-events: none; white-space: nowrap;
+      max-width: 90%;
+      box-shadow: 0 8px 32px rgba(0,0,0,.2);
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    #loader {
+      position: fixed; inset: 0; background: rgba(255,255,255,.9);
+      z-index: 700; display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 10px;
+      backdrop-filter: blur(4px);
+    }
+    #loader.hidden { display: none; }
+    .spinner {
+      width: 36px; height: 36px; border: 3px solid var(--green-lt);
+      border-top-color: var(--green); border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #avatarInput { display: none; }
+
+    #topbar {
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-left: calc(12px + env(safe-area-inset-left, 0px));
+      padding-right: calc(12px + env(safe-area-inset-right, 0px));
+      height: calc(56px + env(safe-area-inset-top, 0px));
+    }
+    #main {
+      top: calc(56px + env(safe-area-inset-top, 0px));
+      bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+    }
+    #bottomNav {
+      height: calc(60px + env(safe-area-inset-bottom, 0px));
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      padding-left: env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+    }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    img { -webkit-touch-callout: none; }
+
+    .leaflet-pane { z-index: 1 !important; }
+    .leaflet-top, .leaflet-bottom { z-index: 2 !important; }
+
+    .btn-camera-activate {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, var(--blue), #1d4ed8);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Nunito', sans-serif;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all .3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 8px;
+      box-shadow: 0 4px 16px rgba(59,130,246,.3);
+    }
+    .btn-camera-activate:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(59,130,246,.4);
+    }
+    .btn-camera-activate:active {
+      transform: scale(.97);
+    }
+    .btn-camera-activate:disabled {
+      opacity: .6;
+      transform: none !important;
+      cursor: not-allowed;
+    }
+
+    .verify-code-box {
+      background: #fef3c7;
+      border: 1.5px solid #fcd34d;
+      border-radius: 10px;
+      padding: 8px 12px;
+      margin: 6px 0 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .verify-code-box .label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #92400e;
+    }
+    .verify-code-box .code {
+      font-family: 'Courier New', monospace;
+      font-size: 16px;
+      font-weight: 900;
+      color: #d97706;
+      letter-spacing: 2px;
+    }
+    .verify-code-box .status {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+    .verify-code-box .status.used {
+      background: var(--green-lt);
+      color: var(--green);
+    }
+    .verify-code-box .status.pending {
+      background: #fef3c7;
+      color: #d97706;
+    }
+
+    .verify-code-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+    .verify-code-actions .btn-verify-sm {
+      padding: 8px 14px;
+      background: #fef3c7;
+      color: #d97706;
+      border: 1.5px solid #fcd34d;
+      border-radius: 8px;
+      font-family: 'Nunito', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .2s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex: 1;
+      justify-content: center;
+    }
+    .verify-code-actions .btn-verify-sm:hover {
+      background: #fde68a;
+      transform: scale(1.02);
+    }
+    .verify-code-actions .btn-verify-sm i {
+      font-size: 14px;
+    }
+    .verify-code-actions .btn-verify-sm.used {
+      background: var(--green-lt);
+      color: var(--green);
+      border-color: #6ee7b7;
+      cursor: default;
+    }
+    .verify-code-actions .btn-verify-sm.used:hover {
+      transform: none;
+    }
+    .verify-code-actions .btn-verify-sm:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Estilo para pedido ya asignado (oculto para otros) */
+    .avail-card.assigned {
+      opacity: 0.5;
+      pointer-events: none;
+      filter: grayscale(0.8);
+    }
+    .avail-card.assigned .btn-accept {
+      display: none;
+    }
+    .avail-card.assigned .avail-actions {
+      justify-content: center;
+    }
+    .assigned-badge {
+      display: inline-block;
+      background: var(--gray-400);
+      color: #fff;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    @media (max-width: 480px) {
+      .avail-toggle .avail-label { display: none; }
+      .topbar-name { font-size: 12px; }
+      .topbar-role { font-size: 9px; padding: 1px 6px; }
+      .topbar-code { font-size: 9px; }
+      .verify-code-box .code { font-size: 14px; }
+      .verify-code-actions .btn-verify-sm { font-size: 10px; padding: 6px 10px; }
+      .scanner-wrap { max-width: 220px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="spinner"></div>
+  <span style="font-size:12px;font-weight:700;color:#6b7280">Cargando...</span>
+</div>
+
+<div id="topbar">
+  <div class="topbar-logo"></div>
+  
+  <div class="topbar-center">
+    <button class="avail-toggle inactive" id="availToggle" onclick="toggleAvailability()">
+      <div class="avail-dot"></div>
+      <span class="avail-label" id="availLabel">Inactivo</span>
+    </button>
+    <div>
+      <div class="topbar-name" id="tbName">—</div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <div class="topbar-role">Repartidor</div>
+        <div class="topbar-code" id="tbCode" onclick="openQROverlay()">—</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="topbar-right">
+    <div class="topbar-avatar" id="tbAvatar" onclick="goPage(3)">
+      <span id="tbAvatarLetter">?</span>
+    </div>
+  </div>
+</div>
+
+<div id="main">
+
+  <div class="page active" id="mapPage">
+    <div id="map"></div>
+    <div class="map-status off" id="mapStatus">
+      <div class="map-status-dot"></div>
+      <span id="mapStatusText">Inactivo</span>
+    </div>
+    <div class="stats-bar">
+      <div class="stat"><i class="ti ti-check-circle"></i> Entregas: <span id="statDeliveries">0</span></div>
+    </div>
+    <button class="map-fab" onclick="centerOnMe()" title="Mi ubicación">
+      <i class="ti ti-navigation"></i>
+    </button>
+    <div class="route-info" id="routeInfo" style="display:none !important;"></div>
+  </div>
+
+  <div class="page" id="availPage">
+    <div class="page-header">
+      <h2><i class="ti ti-clipboard-list" style="color:var(--green)"></i> Pedidos disponibles</h2>
+      <p id="availSubtitle">Actívate para ver pedidos cercanos</p>
+    </div>
+    <div id="availList" style="padding-bottom:14px"></div>
+  </div>
+
+  <div class="page" id="myOrdersPage">
+    <div class="page-header">
+      <h2><i class="ti ti-bike" style="color:var(--green)"></i> Mis entregas</h2>
+    </div>
+    <div id="myOrdersList" style="padding-bottom:14px"></div>
+  </div>
+
+  <div class="page" id="profilePage">
+    <div class="profile-hero">
+      <div class="profile-avatar-wrap">
+        <div class="profile-avatar" id="profileAvatar" onclick="document.getElementById('avatarInput').click()">
+          <span id="profileAvatarLetter">?</span>
+        </div>
+        <button class="avatar-edit-btn" onclick="document.getElementById('avatarInput').click()">
+          <i class="ti ti-camera"></i>
+        </button>
+      </div>
+      <div class="profile-name" id="profileName">—</div>
+      <div class="profile-email" id="profileEmail">—</div>
+      <div class="profile-code" id="profileCode" onclick="openQROverlay()">
+        <i class="ti ti-qrcode"></i> <span id="profileCodeVal">—</span>
+      </div>
+      <div class="qr-mini-wrap" onclick="openQROverlay()" title="Ver código QR">
+        <div id="qrMini"></div>
+        <div class="qr-mini-label">Mi QR</div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-val" id="statTotal">0</div>
+        <div class="stat-label">Entregas totales</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="statRating">—</div>
+        <div class="stat-label">Valoración</div>
+      </div>
+    </div>
+
+    <div class="profile-cards" style="margin-top:6px">
+      <div class="pcard">
+        <div class="pcard-title">Datos personales</div>
+        <div class="prow">
+          <i class="ti ti-user prow-icon"></i>
+          <div class="prow-content">
+            <div class="prow-label">Nombre completo</div>
+            <div class="prow-val" id="pFullName">—</div>
+          </div>
+        </div>
+        <div class="prow">
+          <i class="ti ti-id-badge prow-icon"></i>
+          <div class="prow-content">
+            <div class="prow-label">Carnet de identidad</div>
+            <div class="prow-val" id="pCI">—</div>
+          </div>
+        </div>
+        <div class="prow">
+          <i class="ti ti-phone prow-icon"></i>
+          <div class="prow-content">
+            <div class="prow-label">Teléfono</div>
+            <div class="prow-val" id="pPhone">—</div>
+          </div>
+        </div>
+        <div class="prow">
+          <i class="ti ti-mail prow-icon"></i>
+          <div class="prow-content">
+            <div class="prow-label">Correo</div>
+            <div class="prow-val" id="pEmail">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pcard">
+        <div class="pcard-title">Datos de trabajo</div>
+        <div class="prow">
+          <i class="ti ti-bike prow-icon"></i>
+          <div class="prow-content">
+            <div class="prow-label">Vehículo</div>
+            <div class="prow-val" id="pVehicle">—</div>
+          </div>
+        </div>
+        <div class="prow">
+          <i class="ti ti-map-pin prow-icon"></i>
+          <div class="prow-content">
+            <div class="prow-label">Zona de trabajo</div>
+            <div class="prow-val" id="pZone">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panic-section">
+        <div class="panic-title">🚨 Botón de pánico</div>
+        <div class="panic-desc">Activa esta alerta en caso de emergencia. El administrador recibirá tu ubicación.</div>
+        <button class="panic-btn inactive" id="panicBtn" onclick="togglePanic()">
+          <i class="ti ti-alert-triangle"></i>
+          <span id="panicBtnText">Activar pánico</span>
+        </button>
+        <div class="panic-status-text inactive" id="panicStatusText">🔴 Sin alertas activas</div>
+      </div>
+
+      <button class="save-btn" onclick="toast('Perfil actualizado')">
+        <i class="ti ti-device-floppy"></i> Guardar cambios
+      </button>
+      <button class="logout-btn" onclick="doLogout()">
+        <i class="ti ti-logout"></i> Cerrar sesión
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<nav id="bottomNav">
+  <button class="nav-item active" id="nav0" onclick="goPage(0)">
+    <i class="ti ti-map-2"></i>
+    <span>Mapa</span>
+  </button>
+  <button class="nav-item" id="nav1" onclick="goPage(1)">
+    <i class="ti ti-clipboard-list"></i>
+    <span>Disponibles</span>
+    <div class="nav-badge" id="availBadge"></div>
+  </button>
+  <button class="nav-item" id="nav2" onclick="goPage(2)">
+    <i class="ti ti-bike"></i>
+    <span>Mis entregas</span>
+    <div class="nav-badge" id="myOrdersBadge"></div>
+  </button>
+  <button class="nav-item" onclick="openScan()">
+    <i class="ti ti-scan"></i>
+    <span>Verificar</span>
+  </button>
+  <button class="nav-item" id="nav3" onclick="goPage(3)">
+    <i class="ti ti-user-circle"></i>
+    <span>Perfil</span>
+  </button>
+</nav>
+
+<div class="overlay" id="qrOverlay" onclick="if(event.target===this)closeQROverlay()">
+  <div class="overlay-box">
+    <button class="overlay-close" onclick="closeQROverlay()"><i class="ti ti-x"></i></button>
+    <h3>Mi código LLevitrae</h3>
+    <p>Muéstralo para identificarte como repartidor</p>
+    <div id="qrBig"></div>
+    <div class="user-code-big" id="qrBigCode">—</div>
+    <div class="ov-actions">
+      <button class="ov-btn-ghost" onclick="downloadQR()"><i class="ti ti-download"></i> Descargar</button>
+      <button class="ov-btn-main" onclick="shareQR()"><i class="ti ti-share"></i> Compartir</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="verifyOverlay" onclick="if(event.target===this)closeVerifyOverlay()">
+  <div class="overlay-box">
+    <button class="overlay-close" onclick="closeVerifyOverlay()"><i class="ti ti-x"></i></button>
+    <h3><i class="ti ti-shield-check" style="color:var(--green)"></i> Verificar entrega</h3>
+    <p>Ingresa el código de verificación que <strong>el cliente te proporcionó</strong></p>
+    
+    <div id="verifyOrderInfo" style="margin:6px 0;padding:10px;background:var(--gray-50);border-radius:10px;border:1px solid var(--gray-200);">
+      <div style="font-size:11px;font-weight:600;color:var(--gray-600)">Pedido: <span id="verifyOrderCode" style="color:var(--green);font-weight:900">—</span></div>
+      <div style="font-size:11px;font-weight:600;color:var(--gray-600)">Destino: <span id="verifyOrderDest" style="color:var(--gray-800)">—</span></div>
+      <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-top:3px">
+        Tipo: <span id="verifyOrderType" style="font-weight:900">—</span>
+      </div>
+    </div>
+
+    <div class="verify-input-group">
+      <input type="text" id="verifyCodeInput" placeholder="VER-XXXXX" maxlength="10" autocomplete="off" style="text-transform:uppercase">
+      <button id="verifyCodeBtn" onclick="submitVerificationCode()">
+        <i class="ti ti-check"></i>
+      </button>
+    </div>
+
+    <div id="verifyResult" class="verify-result"></div>
+    
+    <div style="margin-top:6px;font-size:10px;color:var(--gray-400)">
+      <i class="ti ti-info-circle"></i> El código tiene formato VER-XXXXX (ej: VER-A7K3)
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="scanOverlay" onclick="if(event.target===this)closeScan()">
+  <div class="overlay-box" style="max-width:400px">
+    <button class="overlay-close" onclick="closeScan()"><i class="ti ti-x"></i></button>
+    <h3><i class="ti ti-scan" style="color:var(--green)"></i> Verificar usuario</h3>
+    <p>Apunta la cámara al QR o busca por código / pedido</p>
+    
+    <button class="btn-camera-activate" id="cameraActivateBtn" onclick="startHtml5Scanner()">
+      <i class="ti ti-camera"></i> Activar cámara
+    </button>
+    
+    <div class="scanner-wrap" id="scannerWrap" style="display:none;">
+      <div id="scannerContainer"></div>
+      <div class="scan-frame"><div class="scan-line"></div></div>
+    </div>
+    
+    <div style="display:flex;gap:6px;margin:6px 0;flex-wrap:wrap;">
+      <button class="ov-btn-ghost" onclick="toggleScanCam()"
+        style="flex:1;padding:8px;border-radius:10px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--gray-200);background:var(--gray-100);">
+        <i class="ti ti-camera-rotate"></i> Cambiar
+      </button>
+      <button class="ov-btn-ghost" onclick="stopHtml5Scanner(); document.getElementById('scannerWrap').style.display='none';"
+        style="flex:1;padding:8px;border-radius:10px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--gray-200);background:var(--gray-100);">
+        <i class="ti ti-x"></i> Cerrar cámara
+      </button>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:6px;margin:6px 0;">
+      <div class="manual-search-row">
+        <input type="text" id="manualScanInput" placeholder="Código usuario o pedido">
+        <button onclick="manualVerify()"><i class="ti ti-search"></i></button>
+      </div>
+      <div style="font-size:10px;color:var(--gray-400);text-align:left;padding-left:4px">Ej: LLV-7K3M (usuario) o PED-ABC123 (pedido)</div>
+    </div>
+
+    <div id="scanResult" style="display:none"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<input type="file" id="avatarInput" accept="image/*" onchange="handleAvatarUpload(event)">
+
+<script>
+// ══════════════════════════════════════════════
+// CONFIGURACIÓN
+// ══════════════════════════════════════════════
+const SUPA_URL = 'https://sjeeqxiormfjmbgfwhao.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqZWVxeGlvcm1mam1iZ2Z3aGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMjkxNjksImV4cCI6MjA5NTgwNTE2OX0.z5mv_xMSS1z6yFU3JoyXMw4f6Gd7jr_5A3L8FM_iUMk';
+
+// ══════════════════════════════════════════════
+// ESTADO GLOBAL
+// ══════════════════════════════════════════════
+var sb, PROFILE, USER, RIDER;
+var mainMap, riderMarker;
+var isActive = false;
+var locationWatcher = null;
+var myLat = null, myLng = null;
+var availSub = null;
+var qrBigDataUrl = null;
+var orderMarkers = [];
+var qrMiniInstance = null;
+var qrBigInstance = null;
+var currentRouteControl = null;
+var currentOrderMarkers = [];
+var currentOrderId = null;
+var panicActive = false;
+var panicInterval = null;
+var pendingVerifyOrderId = null;
+var activeOrders = [];
+var hasActiveOrder = false;
+var gpsActive = false;
+
+// 🔴 HTML5-QRCODE
+var html5Scanner = null;
+var isScanning = false;
+var scanCooldown = false;
+var lastScanned = '';
+
+// ══════════════════════════════════════════════
+// AUTO-ACTUALIZACIÓN CADA 2 SEGUNDOS (SILENCIOSA)
+// ══════════════════════════════════════════════
+var autoRefreshInterval = null;
+
+function startAutoRefresh() {
+  if (autoRefreshInterval) return;
+  autoRefreshInterval = setInterval(() => {
+    if (document.hidden) return;
+    refreshDataSilently();
+  }, 2000);
+}
+
+function stopAutoRefresh() {
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval);
+    autoRefreshInterval = null;
+  }
+}
+
+async function refreshDataSilently() {
+  try {
+    await checkActiveOrders();
+    
+    const activePage = document.querySelector('.page.active');
+    if (activePage) {
+      const pageId = activePage.id;
+      if (pageId === 'availPage') {
+        await loadAvailableOrdersSilent();
+      } else if (pageId === 'myOrdersPage') {
+        await loadMyOrdersSilent();
+      } else if (pageId === 'mapPage') {
+        await loadOrdersOnMapSilent();
+      }
+    }
+    
+    if (RIDER && RIDER.deliveries_count != null) {
+      document.getElementById('statDeliveries').textContent = RIDER.deliveries_count;
+      document.getElementById('statTotal').textContent = RIDER.deliveries_count;
+    }
+    
+    if (riderMarker) {
+      const color = hasActiveOrder ? '#f59e0b' : (isActive ? '#10b981' : '#ef4444');
+      riderMarker.setStyle({ fillColor: color });
+    }
+    
+    await updateAvailBadgeSilent();
+    await updateMyOrdersBadgeSilent();
+    
+  } catch (e) {
+    console.debug('Auto-refresh silencioso:', e.message);
+  }
+}
+
+async function loadAvailableOrdersSilent() {
+  const { data: orders } = await sb.from('orders')
+    .select('*, profiles!client_id(full_name, phone)')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+  
+  const list = document.getElementById('availList');
+  if (!orders || orders.length === 0) {
+    document.getElementById('availSubtitle').textContent = isActive ? 'No hay pedidos pendientes ahora' : 'Actívate para ver pedidos cercanos';
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="ti ti-clipboard-x"></i></div><div class="empty-title">${isActive ? 'Sin pedidos pendientes' : 'Estás inactivo'}</div><div class="empty-sub">${isActive ? 'Cuando un cliente publique un pedido aparecerá aquí.' : 'Actívate con el botón de arriba para empezar a recibir pedidos.'}</div></div>`;
+    return;
+  }
+  
+  // Filtrar pedidos que YA tienen un rider asignado (para no mostrarlos)
+  const available = orders.filter(o => o.rider_id === null);
+  
+  document.getElementById('availSubtitle').textContent = `${available.length} pedido${available.length > 1 ? 's' : ''} disponibles`;
+  list.innerHTML = available.map(o => renderAvailCard(o)).join('');
+}
+
+async function loadMyOrdersSilent() {
+  const { data: rider } = await sb.from('riders').select('id, deliveries_count').eq('profile_id', USER.id).single();
+  if (!rider) return;
+  
+  const { data: orders } = await sb.from('orders')
+    .select('*, profiles!client_id(full_name, phone, user_code)')
+    .eq('rider_id', rider.id)
+    .order('created_at', { ascending: false });
+  
+  const list = document.getElementById('myOrdersList');
+  if (!orders || orders.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="ti ti-bike"></i></div><div class="empty-title">Sin entregas aún</div><div class="empty-sub">Cuando aceptes un pedido aparecerá aquí para gestionarlo.</div></div>`;
+    return;
+  }
+  
+  const active = orders.filter(o => o.status === 'active');
+  list.innerHTML = orders.map(o => renderDeliveryCard(o)).join('');
+}
+
+async function loadOrdersOnMapSilent() {
+  const { data: orders } = await sb.from('orders')
+    .select('*, profiles!client_id(full_name, phone)')
+    .eq('status', 'pending')
+    .is('rider_id', null) // Solo pedidos sin rider asignado
+    .not('origin_lat', 'is', null)
+    .not('origin_lng', 'is', null);
+  
+  if (!orders || orders.length === 0) {
+    // Si no hay pedidos disponibles, eliminar marcadores
+    orderMarkers.forEach(m => { if (mainMap) mainMap.removeLayer(m); });
+    orderMarkers = [];
+    return;
+  }
+  
+  // Recrear marcadores
+  orderMarkers.forEach(m => { if (mainMap) mainMap.removeLayer(m); });
+  orderMarkers = [];
+  
+  orders.forEach(o => {
+    const lat = o.origin_lat;
+    const lng = o.origin_lng;
+    if (!lat || !lng) return;
+    
+    const clientName = o.profiles?.full_name || 'Cliente';
+    const dateStr = new Date(o.created_at).toLocaleTimeString('es-CU', { hour: '2-digit', minute: '2-digit' });
+    const dist = orderDistanceKm(o);
+    
+    const popupContent = `
+      <div class="popup-order">
+        <div class="popup-header">
+          <span class="popup-code">${o.code}</span>
+          <span class="popup-urgency ${o.urgency === 'Urgente' ? 'urgente' : ''}">
+            ${o.urgency === 'Urgente' ? '🔥' : ''} ${o.urgency || 'Normal'}
+          </span>
+        </div>
+        <div class="popup-meta">
+          <span><i class="ti ti-clock"></i> ${dateStr}</span>
+          <span><i class="ti ti-weight"></i> ${o.weight_kg || '—'} kg</span>
+        </div>
+        <div class="popup-meta">
+          ${tripTypeBadge(o)}
+          ${dist != null ? `<span class="avail-distance"><i class="ti ti-ruler-measure"></i> ${dist.toFixed(1)} km${o.trip_type === 'vuelta' ? ` (${(dist*2).toFixed(1)} ida y vuelta)` : ''}</span>` : ''}
+        </div>
+        <div class="popup-desc">
+          <div class="popup-desc-item"><i class="ti ti-package"></i> ${o.description}</div>
+          <div class="popup-desc-item"><i class="ti ti-user"></i> ${clientName}</div>
+        </div>
+        <div class="popup-address origin">
+          <div class="popup-address-label"><i class="ti ti-map-pin"></i> RECOGIDA</div>
+          <div class="popup-address-text">${o.origin_address || 'Ver en mapa'}</div>
+        </div>
+        <div class="popup-address dest">
+          <div class="popup-address-label"><i class="ti ti-flag"></i> ENTREGA</div>
+          <div class="popup-address-text">${o.dest_address || 'Ver en mapa'}</div>
+        </div>
+        <button class="popup-btn accept" onclick="acceptOrderFromMap('${o.id}')" ${hasActiveOrder ? 'disabled' : ''}>
+          <i class="ti ti-check"></i> ${hasActiveOrder ? 'OCUPADO' : 'ACEPTAR PEDIDO'}
+        </button>
+        <button class="popup-btn route" onclick="previewRouteFromCode('${o.id}')">
+          <i class="ti ti-map-route"></i> Ver ruta
+        </button>
+      </div>
+    `;
+    
+    const marker = L.marker([lat, lng], { 
+      icon: L.divIcon({
+        html: `<div class="order-marker">📦</div>`,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        className: ''
+      })
+    })
+    .addTo(mainMap)
+    .bindPopup(popupContent, { maxWidth: 300, minWidth: 200 });
+    
+    orderMarkers.push(marker);
+  });
+}
+
+async function updateAvailBadgeSilent() {
+  const { data: orders } = await sb.from('orders')
+    .select('id')
+    .eq('status', 'pending')
+    .is('rider_id', null);
+  const n = orders ? orders.length : 0;
+  const b = document.getElementById('availBadge');
+  b.textContent = n; b.style.display = n > 0 ? 'flex' : 'none';
+}
+
+async function updateMyOrdersBadgeSilent() {
+  const { data: rider } = await sb.from('riders').select('id').eq('profile_id', USER.id).single();
+  if (!rider) return;
+  const { data: orders } = await sb.from('orders')
+    .select('id')
+    .eq('rider_id', rider.id)
+    .eq('status', 'active');
+  const n = orders ? orders.length : 0;
+  const b = document.getElementById('myOrdersBadge');
+  b.textContent = n; b.style.display = n > 0 ? 'flex' : 'none';
+}
+
+const $ = id => document.getElementById(id);
+
+function calcDistance(lat1, lng1, lat2, lng2) {
+  if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return null;
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+function orderDistanceKm(o) {
+  if (o.distance_km != null) return o.distance_km;
+  return calcDistance(o.origin_lat, o.origin_lng, o.dest_lat, o.dest_lng);
+}
+
+function tripTypeBadge(o) {
+  const isRound = o.trip_type === 'vuelta';
+  return isRound
+    ? `<span class="trip-badge trip-round"><i class="ti ti-repeat"></i> Ida y vuelta</span>`
+    : `<span class="trip-badge trip-oneway"><i class="ti ti-arrow-right"></i> Solo ida</span>`;
+}
+
+// ══════════════════════════════════════════════
+// FUNCIONES GLOBALES
+// ══════════════════════════════════════════════
+window.openQROverlay = function() {
+  var ov = document.getElementById('qrOverlay');
+  if (ov) ov.classList.add('show');
+};
+
+window.closeQROverlay = function() {
+  var ov = document.getElementById('qrOverlay');
+  if (ov) ov.classList.remove('show');
+};
+
+// ══════════════════════════════════════════════
+// 🔴 HTML5-QRCODE SCANNER - CÁMARA TRASERA FORZADA
+// ══════════════════════════════════════════════
+
+function startHtml5Scanner() {
+  const btn = document.getElementById('cameraActivateBtn');
+  const wrap = document.getElementById('scannerWrap');
+  const container = document.getElementById('scannerContainer');
+  const resEl = document.getElementById('scanResult');
+  
+  resEl.style.display = 'none';
+  resEl.className = 'scan-result';
+  resEl.innerHTML = '';
+  
+  wrap.style.display = 'block';
+  
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader"></i> Iniciando cámara...';
+  
+  if (typeof Html5Qrcode === 'undefined') {
+    btn.innerHTML = '<i class="ti ti-camera"></i> Activar cámara';
+    btn.disabled = false;
+    toast('❌ Error: Librería de escáner no cargada');
+    return;
+  }
+  
+  if (html5Scanner) {
+    stopHtml5Scanner();
+  }
+  
+  const config = {
+    fps: 15,
+    qrbox: { width: 200, height: 200 },
+    aspectRatio: 1.0,
+    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+  };
+  
+  html5Scanner = new Html5Qrcode("scannerContainer");
+  
+  html5Scanner.start(
+    { facingMode: "environment" },
+    config,
+    onScanSuccess,
+    onScanError
+  )
+  .then(() => {
+    isScanning = true;
+    btn.innerHTML = '<i class="ti ti-camera"></i> Cámara trasera activa';
+    btn.disabled = false;
+    toast('📷 Cámara trasera activa. Apunta al código QR.');
+  })
+  .catch(err => {
+    console.warn('Cámara trasera exact falló, intentando con ideal:', err);
+    
+    html5Scanner.start(
+      { facingMode: "environment" },
+      config,
+      onScanSuccess,
+      onScanError
+    )
+    .then(() => {
+      isScanning = true;
+      btn.innerHTML = '<i class="ti ti-camera"></i> Cámara trasera activa';
+      btn.disabled = false;
+      toast('📷 Cámara trasera activa. Apunta al código QR.');
+    })
+    .catch(err2 => {
+      console.error('Error al iniciar escáner:', err2);
+      btn.innerHTML = '<i class="ti ti-camera"></i> Reintentar';
+      btn.disabled = false;
+      
+      let msg = 'No se pudo iniciar la cámara trasera';
+      if (err2.message && err2.message.includes('permission')) {
+        msg = '🔒 Permiso denegado. Habilita la cámara en los ajustes.';
+      } else if (err2.message && err2.message.includes('camera')) {
+        msg = '📷 No se encontró cámara trasera. Intenta con "Cambiar cámara".';
+      }
+      
+      resEl.style.display = 'block';
+      resEl.className = 'scan-result err';
+      resEl.innerHTML = `
+        <div class="scan-result-name">❌ ${msg}</div>
+        <div class="scan-result-row"><i class="ti ti-info-circle"></i> ${err2.message || ''}</div>
+        <button onclick="startHtml5Scanner()" style="margin-top:8px;padding:6px 14px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'Nunito',sans-serif;font-weight:700;cursor:pointer">
+          <i class="ti ti-refresh"></i> Reintentar
+        </button>`;
+    });
+  });
+}
+
+function stopHtml5Scanner() {
+  if (html5Scanner) {
+    try {
+      html5Scanner.stop().then(() => {
+        html5Scanner.clear();
+        html5Scanner = null;
+        isScanning = false;
+        document.getElementById('scannerWrap').style.display = 'none';
+        const btn = document.getElementById('cameraActivateBtn');
+        btn.innerHTML = '<i class="ti ti-camera"></i> Activar cámara';
+        btn.disabled = false;
+      }).catch(() => {
+        html5Scanner = null;
+        isScanning = false;
+      });
+    } catch(e) {
+      html5Scanner = null;
+      isScanning = false;
+    }
+  } else {
+    document.getElementById('scannerWrap').style.display = 'none';
+  }
+}
+
+var camIndex = 0;
+function toggleScanCam() {
+  camIndex++;
+  const facingMode = (camIndex % 2 === 0) ? "environment" : "user";
+  const label = (camIndex % 2 === 0) ? "trasera" : "delantera";
+  
+  stopHtml5Scanner();
+  setTimeout(() => {
+    startHtml5ScannerWithFacing(facingMode, label);
+  }, 500);
+}
+
+function startHtml5ScannerWithFacing(facingMode, label) {
+  const btn = document.getElementById('cameraActivateBtn');
+  const wrap = document.getElementById('scannerWrap');
+  const container = document.getElementById('scannerContainer');
+  const resEl = document.getElementById('scanResult');
+  
+  resEl.style.display = 'none';
+  resEl.className = 'scan-result';
+  resEl.innerHTML = '';
+  wrap.style.display = 'block';
+  
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader"></i> Iniciando cámara...';
+  
+  if (typeof Html5Qrcode === 'undefined') {
+    btn.innerHTML = '<i class="ti ti-camera"></i> Activar cámara';
+    btn.disabled = false;
+    toast('❌ Error: Librería de escáner no cargada');
+    return;
+  }
+  
+  if (html5Scanner) {
+    stopHtml5Scanner();
+  }
+  
+  const config = {
+    fps: 15,
+    qrbox: { width: 200, height: 200 },
+    aspectRatio: 1.0,
+    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+  };
+  
+  html5Scanner = new Html5Qrcode("scannerContainer");
+  
+  html5Scanner.start(
+    { facingMode: facingMode },
+    config,
+    onScanSuccess,
+    onScanError
+  )
+  .then(() => {
+    isScanning = true;
+    btn.innerHTML = `<i class="ti ti-camera"></i> Cámara ${label} activa`;
+    btn.disabled = false;
+    toast(`📷 Cámara ${label} activa. Apunta al código QR.`);
+  })
+  .catch(err => {
+    console.error('Error al iniciar escáner:', err);
+    btn.innerHTML = '<i class="ti ti-camera"></i> Reintentar';
+    btn.disabled = false;
+    
+    let msg = `No se pudo iniciar la cámara ${label}`;
+    if (err.message && err.message.includes('permission')) {
+      msg = '🔒 Permiso denegado. Habilita la cámara en los ajustes.';
+    } else if (err.message && err.message.includes('camera')) {
+      msg = '📷 No se encontró la cámara seleccionada.';
+    }
+    
+    resEl.style.display = 'block';
+    resEl.className = 'scan-result err';
+    resEl.innerHTML = `
+      <div class="scan-result-name">❌ ${msg}</div>
+      <div class="scan-result-row"><i class="ti ti-info-circle"></i> ${err.message || ''}</div>
+      <button onclick="startHtml5Scanner()" style="margin-top:8px;padding:6px 14px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'Nunito',sans-serif;font-weight:700;cursor:pointer">
+        <i class="ti ti-refresh"></i> Reintentar
+      </button>`;
+  });
+}
+
+function onScanSuccess(decodedText, decodedResult) {
+  if (scanCooldown || decodedText === lastScanned) return;
+  
+  scanCooldown = true;
+  lastScanned = decodedText;
+  setTimeout(() => { scanCooldown = false; }, 3000);
+  
+  stopHtml5Scanner();
+  handleScanResult(decodedText);
+}
+
+function onScanError(err) {}
+
+async function handleScanResult(raw) {
+  if (!raw) return;
+  
+  if (!raw.startsWith('LLV-')) {
+    const resEl = document.getElementById('scanResult');
+    resEl.style.display = 'block';
+    resEl.className = 'scan-result';
+    resEl.innerHTML = `
+      <div class="scan-result-name">📷 Código leído:</div>
+      <div style="font-size:12px;font-weight:600;color:var(--gray-600);word-break:break-all">${raw}</div>
+      <div style="font-size:11px;color:#d97706;margin-top:4px">⚠️ No es un código LLevitrae (debe empezar con LLV-)</div>
+      <button onclick="startHtml5Scanner()" style="margin-top:8px;padding:6px 14px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'Nunito',sans-serif;font-weight:700;cursor:pointer">
+        <i class="ti ti-camera"></i> Escanear otro
+      </button>
+    `;
+    return;
+  }
+
+  const resEl = document.getElementById('scanResult');
+  
+  try {
+    const { data: prof } = await sb.from('profiles')
+      .select('full_name, ci, phone, role, user_code, email')
+      .eq('user_code', raw)
+      .single();
+
+    if (!prof) {
+      resEl.style.display = 'block';
+      resEl.className = 'scan-result err';
+      resEl.innerHTML = `
+        <div class="scan-result-name">❌ Código no encontrado</div>
+        <div class="scan-result-row"><i class="ti ti-info-circle"></i>${raw}</div>
+        <button onclick="startHtml5Scanner()" style="margin-top:8px;padding:6px 14px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'Nunito',sans-serif;font-weight:700;cursor:pointer">
+          <i class="ti ti-camera"></i> Escanear otro
+        </button>
+      `;
+      return;
+    }
+
+    const roleLabel = prof.role === 'client' ? 'Cliente' : 'Repartidor';
+    const badgeClass = prof.role === 'client' ? 'badge-client' : 'badge-rider';
+    const roleIcon = prof.role === 'client' ? 'ti-user' : 'ti-bike';
+
+    resEl.style.display = 'block';
+    resEl.className = 'scan-result ok';
+    resEl.innerHTML = `
+      <div class="scan-result-name">✅ ${prof.full_name || 'Usuario'}</div>
+      <span class="scan-result-badge ${badgeClass}"><i class="ti ${roleIcon}"></i> ${roleLabel}</span>
+      <div class="scan-result-row" style="margin-top:6px"><i class="ti ti-id-badge"></i>CI: ${prof.ci || '—'}</div>
+      <div class="scan-result-row"><i class="ti ti-phone"></i>${prof.phone || '—'}</div>
+      <div class="scan-result-row"><i class="ti ti-qrcode"></i>${prof.user_code}</div>
+      <button onclick="startHtml5Scanner()" style="margin-top:8px;padding:6px 14px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'Nunito',sans-serif;font-weight:700;cursor:pointer">
+        <i class="ti ti-camera"></i> Escanear otro
+      </button>
+    `;
+      
+    if (navigator.vibrate) navigator.vibrate(100);
+    
+  } catch(e) {
+    console.error('Error al procesar QR:', e);
+    resEl.style.display = 'block';
+    resEl.className = 'scan-result err';
+    resEl.innerHTML = `
+      <div class="scan-result-name">❌ Error al procesar</div>
+      <div class="scan-result-row"><i class="ti ti-info-circle"></i> ${e.message || ''}</div>
+      <button onclick="startHtml5Scanner()" style="margin-top:8px;padding:6px 14px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'Nunito',sans-serif;font-weight:700;cursor:pointer">
+        <i class="ti ti-camera"></i> Escanear otro
+      </button>
+    `;
+  }
+}
+
+window.openScan = function() {
+  var ov = document.getElementById('scanOverlay');
+  if (!ov) return;
+  
+  document.getElementById('manualScanInput').value = '';
+  const resEl = document.getElementById('scanResult');
+  resEl.style.display = 'none';
+  resEl.className = 'scan-result';
+  resEl.innerHTML = '';
+  
+  document.getElementById('scannerWrap').style.display = 'none';
+  
+  const btn = document.getElementById('cameraActivateBtn');
+  btn.disabled = false;
+  btn.innerHTML = '<i class="ti ti-camera"></i> Activar cámara';
+  
+  if (html5Scanner) {
+    stopHtml5Scanner();
+  }
+  
+  ov.classList.add('show');
+};
+
+window.closeScan = function() {
+  var ov = document.getElementById('scanOverlay');
+  if (ov) ov.classList.remove('show');
+  stopHtml5Scanner();
+  document.getElementById('scannerWrap').style.display = 'none';
+  isScanning = false;
+};
+
+window.manualVerify = async function() {
+  const input = document.getElementById('manualScanInput');
+  const value = input.value.trim().toUpperCase();
+  if (!value) { toast('Escribe un código de usuario o número de pedido'); return; }
+
+  const resEl = document.getElementById('scanResult');
+  resEl.style.display = 'block';
+
+  if (value.startsWith('LLV-') && value.length >= 8) {
+    const { data: prof } = await sb.from('profiles')
+      .select('full_name, ci, phone, role, user_code, email')
+      .eq('user_code', value)
+      .single();
+
+    if (prof) {
+      const roleLabel = prof.role === 'client' ? 'Cliente' : 'Repartidor';
+      const badgeClass = prof.role === 'client' ? 'badge-client' : 'badge-rider';
+      const roleIcon = prof.role === 'client' ? 'ti-user' : 'ti-bike';
+      resEl.className = 'scan-result ok';
+      resEl.innerHTML = `
+        <div class="scan-result-name">✅ ${prof.full_name || 'Usuario'}</div>
+        <span class="scan-result-badge ${badgeClass}"><i class="ti ${roleIcon}"></i> ${roleLabel}</span>
+        <div class="scan-result-row" style="margin-top:6px"><i class="ti ti-id-badge"></i>CI: ${prof.ci || '—'}</div>
+        <div class="scan-result-row"><i class="ti ti-phone"></i>${prof.phone || '—'}</div>
+        <div class="scan-result-row"><i class="ti ti-qrcode"></i>${prof.user_code}</div>`;
+      return;
+    }
+  }
+
+  if (value.startsWith('PED-')) {
+    const { data: order } = await sb.from('orders')
+      .select('*, profiles!client_id(full_name, phone, user_code)')
+      .eq('code', value)
+      .single();
+
+    if (order) {
+      const client = order.profiles;
+      resEl.className = 'scan-result ok';
+      resEl.innerHTML = `
+        <div class="scan-result-name">📦 ${order.code}</div>
+        <div class="scan-result-row"><i class="ti ti-package"></i>${order.description}</div>
+        <div class="scan-result-row"><i class="ti ti-user"></i><b>Cliente:</b> ${client?.full_name || '—'}</div>
+        <div class="scan-result-row"><i class="ti ti-phone"></i>${client?.phone || '—'}</div>
+        <div class="scan-result-row"><i class="ti ti-qrcode"></i>${client?.user_code || '—'}</div>
+        <div class="scan-result-row"><i class="ti ti-map-pin"></i>${order.origin_address || '—'}</div>
+        <div class="scan-result-row"><i class="ti ti-flag"></i>${order.dest_address || '—'}</div>
+        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+          <button onclick="acceptOrderFromCode('${order.id}')" class="popup-btn" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;flex:1;font-size:11px" ${hasActiveOrder ? 'disabled' : ''}>
+            <i class="ti ti-check"></i> ${hasActiveOrder ? 'Ocupado' : 'Aceptar'}
+          </button>
+          <button onclick="previewRouteFromCode('${order.id}')" class="popup-btn" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;flex:1;font-size:11px">
+            <i class="ti ti-map-route"></i> Ver ruta
+          </button>
+        </div>
+      `;
+      return;
+    }
+  }
+
+  resEl.className = 'scan-result err';
+  resEl.innerHTML = `
+    <div class="scan-result-name">❌ No encontrado</div>
+    <div class="scan-result-row"><i class="ti ti-info-circle"></i>${value}</div>`;
+};
+
+// ══════════════════════════════════════════════
+// VERIFICACIÓN DE CÓDIGO (el repartidor solo INGRESA el código que el cliente le da)
+// ══════════════════════════════════════════════
+async function submitVerificationCode() {
+  const input = document.getElementById('verifyCodeInput');
+  const code = input.value.trim().toUpperCase();
+  const btn = document.getElementById('verifyCodeBtn');
+  const result = document.getElementById('verifyResult');
+  
+  if (!code) {
+    result.className = 'verify-result error';
+    result.innerHTML = '❌ Ingresa el código de verificación que el cliente te proporcionó';
+    result.style.display = 'block';
+    return;
+  }
+  
+  if (!code.startsWith('VER-') || code.length < 8) {
+    result.className = 'verify-result error';
+    result.innerHTML = '❌ Formato inválido. Debe ser VER-XXXXX (ej: VER-A7K3)';
+    result.style.display = 'block';
+    return;
+  }
+  
+  if (!pendingVerifyOrderId) {
+    result.className = 'verify-result error';
+    result.innerHTML = '❌ No hay pedido seleccionado';
+    result.style.display = 'block';
+    return;
+  }
+  
+  btn.disabled = true;
+  result.style.display = 'none';
+  
+  try {
+    const { data: order, error } = await sb.from('orders')
+      .select('*')
+      .eq('id', pendingVerifyOrderId)
+      .single();
+    
+    if (error || !order) {
+      console.error('Error al obtener pedido:', error);
+      result.className = 'verify-result error';
+      result.innerHTML = '❌ Error al verificar el pedido: ' + (error?.message || 'No encontrado');
+      result.style.display = 'block';
+      btn.disabled = false;
+      return;
+    }
+    
+    if (order.status === 'done') {
+      result.className = 'verify-result error';
+      result.innerHTML = '❌ Este pedido ya fue entregado completamente';
+      result.style.display = 'block';
+      btn.disabled = false;
+      return;
+    }
+    
+    if (order.status === 'cancelled') {
+      result.className = 'verify-result error';
+      result.innerHTML = '❌ Este pedido fue cancelado';
+      result.style.display = 'block';
+      btn.disabled = false;
+      return;
+    }
+    
+    const isRound = order.trip_type === 'vuelta';
+    let updateData = {};
+    let successMsg = '';
+    
+    if (order.verify_code_ida === code && !order.verify_ida_used) {
+      updateData = { verify_ida_used: true };
+      
+      if (!isRound) {
+        updateData.status = 'done';
+        updateData.delivered_at = new Date().toISOString();
+        successMsg = '✅ ¡Entrega completada!';
+      } else {
+        successMsg = '✅ Código de IDA verificado. Ahora dirígete al destino y solicita el código de VUELTA.';
+      }
+    } 
+    else if (isRound && order.verify_code_vuelta === code && !order.verify_vuelta_used && order.verify_ida_used) {
+      updateData = { 
+        verify_vuelta_used: true,
+        status: 'done',
+        delivered_at: new Date().toISOString()
+      };
+      successMsg = '✅ ¡Entrega completada! (Ida y vuelta verificada)';
+    }
+    else if (order.verify_code_ida !== code && order.verify_code_vuelta !== code) {
+      result.className = 'verify-result error';
+      result.innerHTML = '❌ Código incorrecto. Verifica con el cliente.';
+      result.style.display = 'block';
+      btn.disabled = false;
+      return;
+    }
+    else if (order.verify_ida_used && order.verify_code_ida === code) {
+      result.className = 'verify-result error';
+      result.innerHTML = '❌ El código de IDA ya fue utilizado. Solicita el siguiente código al cliente.';
+      result.style.display = 'block';
+      btn.disabled = false;
+      return;
+    }
+    else if (order.verify_vuelta_used && order.verify_code_vuelta === code) {
+      result.className = 'verify-result error';
+      result.innerHTML = '❌ El código de VUELTA ya fue utilizado. La entrega ya está completada.';
+      result.style.display = 'block';
+      btn.disabled = false;
+      return;
+    }
+    else if (isRound && order.verify_code_vuelta === code && !order.verify_ida_used) {
+      result.className = 'verify-result error';
+      result.innerHTML = '❌ Primero debes verificar el código de IDA en el punto de recogida.';
+      result.style.display = 'block';
+      btn.disabled = false;
+      return;
+    }
+    
+    if (Object.keys(updateData).length === 0) {
+      result.className = 'verify-result error';
+      result.innerHTML = '❌ Error inesperado al verificar';
+      result.style.display = 'block';
+      btn.disabled = false;
+      return;
+    }
+    
+    const { error: updateError } = await sb.from('orders')
+      .update(updateData)
+      .eq('id', pendingVerifyOrderId);
+    
+    if (updateError) {
+      console.error('Error al actualizar:', updateError);
+      result.className = 'verify-result error';
+      result.innerHTML = '❌ Error al confirmar entrega: ' + updateError.message;
+      result.style.display = 'block';
+      btn.disabled = false;
+      return;
+    }
+    
+    if (updateData.status === 'done') {
+      const count = (RIDER.deliveries_count || 0) + 1;
+      await sb.from('riders').update({ deliveries_count: count }).eq('profile_id', USER.id);
+      RIDER.deliveries_count = count;
+      document.getElementById('statDeliveries').textContent = count;
+      document.getElementById('statTotal').textContent = count;
+    }
+    
+    result.className = 'verify-result success';
+    result.innerHTML = `
+      <i class="ti ti-circle-check" style="font-size:18px"></i>
+      <div style="font-size:15px">${successMsg}</div>
+      <div style="font-size:11px;font-weight:600;margin-top:3px;color:var(--gray-600)">
+        Código verificado: <strong style="color:var(--green)">${code}</strong>
+        ${updateData.status === 'done' ? ' 🎉' : ''}
+      </div>
+    `;
+    result.style.display = 'block';
+    btn.disabled = false;
+    
+    toast(successMsg);
+    
+    setTimeout(() => {
+      closeVerifyOverlay();
+      loadMyOrders();
+      loadAvailableOrders();
+      loadOrdersOnMap();
+      clearRoute();
+      checkActiveOrders();
+    }, 1500);
+    
+  } catch(e) {
+    console.error('❌ Error en verificación:', e);
+    result.className = 'verify-result error';
+    result.innerHTML = '❌ Error al verificar el código: ' + (e.message || 'Error desconocido');
+    result.style.display = 'block';
+    btn.disabled = false;
+  }
+}
+
+function openVerifyOverlay(orderId) {
+  const ov = document.getElementById('verifyOverlay');
+  if (!ov) return;
+  
+  pendingVerifyOrderId = orderId;
+  
+  sb.from('orders')
+    .select('*')
+    .eq('id', orderId)
+    .single()
+    .then(({ data, error }) => {
+      if (error) {
+        console.error('Error al obtener pedido:', error);
+        toast('❌ Error al cargar datos del pedido');
+        return;
+      }
+      
+      if (data) {
+        document.getElementById('verifyOrderCode').textContent = data.code || '—';
+        document.getElementById('verifyOrderDest').textContent = data.dest_address || '—';
+        
+        const isRound = data.trip_type === 'vuelta';
+        document.getElementById('verifyOrderType').textContent = isRound ? 'Ida y vuelta' : 'Solo ida';
+        
+        const infoDiv = document.getElementById('verifyOrderInfo');
+        const oldInfo = infoDiv.querySelectorAll('.verify-step-info');
+        oldInfo.forEach(el => el.remove());
+        
+        let stepInfo = '';
+        if (isRound) {
+          if (!data.verify_ida_used) {
+            stepInfo = `<div class="verify-step-info" style="margin-top:4px;padding:5px 8px;background:#dbeafe;border-radius:8px;border:1px solid #3b82f6;font-size:11px;font-weight:600;color:#1e40af;">
+              <i class="ti ti-info-circle"></i> 📍 Paso 1: Solicita al cliente el <strong>código de IDA</strong> en el punto de recogida
+            </div>`;
+          } else if (!data.verify_vuelta_used) {
+            stepInfo = `<div class="verify-step-info" style="margin-top:4px;padding:5px 8px;background:#fef3c7;border-radius:8px;border:1px solid #f59e0b;font-size:11px;font-weight:600;color:#92400e;">
+              <i class="ti ti-info-circle"></i> 🏁 Paso 2: Solicita al cliente el <strong>código de VUELTA</strong> en el destino
+            </div>`;
+          } else {
+            stepInfo = `<div class="verify-step-info" style="margin-top:4px;padding:5px 8px;background:var(--green-lt);border-radius:8px;border:1px solid #6ee7b7;font-size:11px;font-weight:600;color:var(--green);">
+              <i class="ti ti-check-circle"></i> ✅ Ambos códigos ya verificados
+            </div>`;
+          }
+        } else {
+          if (!data.verify_ida_used) {
+            stepInfo = `<div class="verify-step-info" style="margin-top:4px;padding:5px 8px;background:#dbeafe;border-radius:8px;border:1px solid #3b82f6;font-size:11px;font-weight:600;color:#1e40af;">
+              <i class="ti ti-info-circle"></i> 🏁 Solicita al cliente el <strong>código de verificación</strong> al llegar al destino
+            </div>`;
+          } else {
+            stepInfo = `<div class="verify-step-info" style="margin-top:4px;padding:5px 8px;background:var(--green-lt);border-radius:8px;border:1px solid #6ee7b7;font-size:11px;font-weight:600;color:var(--green);">
+              <i class="ti ti-check-circle"></i> ✅ Código ya verificado
+            </div>`;
+          }
+        }
+        infoDiv.insertAdjacentHTML('beforeend', stepInfo);
+      }
+    })
+    .catch(err => {
+      console.error('Error en openVerifyOverlay:', err);
+      toast('❌ Error al cargar el pedido');
+    });
+  
+  document.getElementById('verifyCodeInput').value = '';
+  document.getElementById('verifyResult').className = 'verify-result';
+  document.getElementById('verifyResult').style.display = 'none';
+  document.getElementById('verifyCodeBtn').disabled = false;
+  ov.classList.add('show');
+  setTimeout(() => document.getElementById('verifyCodeInput').focus(), 300);
+}
+
+function closeVerifyOverlay() {
+  const ov = document.getElementById('verifyOverlay');
+  if (ov) ov.classList.remove('show');
+  pendingVerifyOrderId = null;
+}
+
+// ══════════════════════════════════════════════
+// LOGOUT
+// ══════════════════════════════════════════════
+async function doLogout() {
+  if (!confirm('¿Cerrar sesión?')) return;
+  try {
+    stopLocationTracking();
+    await sb.from('riders').update({ is_active: false, lat: null, lng: null }).eq('profile_id', USER.id);
+    await sb.auth.signOut();
+    stopAutoRefresh();
+    window.location.href = 'index.html?logout=true';
+  } catch(e) {
+    console.error('Error al cerrar sesión:', e);
+    window.location.href = 'index.html?logout=true';
+  }
+}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+window.addEventListener('load', async () => {
+  sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = 'index.html?logout=true'; return; }
+  USER = session.user;
+
+  const { data: prof, error } = await sb.from('profiles').select('*').eq('id', USER.id).single();
+  if (error || !prof) { window.location.href = 'index.html?logout=true'; return; }
+  PROFILE = prof;
+
+  if (PROFILE.role !== 'rider') { window.location.href = 'index.html?logout=true'; return; }
+
+  const { data: rider } = await sb.from('riders').select('*').eq('profile_id', USER.id).single();
+  RIDER = rider || {};
+
+  fillUI();
+  initMainMap();
+  loadAvailableOrders();
+  loadMyOrders();
+  generateQRs();
+  subscribeRealtime();
+  checkPanicStatus();
+  await checkActiveOrders();
+  
+  startAutoRefresh();
+
+  hideLoader();
+});
+
+function fillUI() {
+  const name = PROFILE.full_name || 'Repartidor';
+  const letter = name[0].toUpperCase();
+
+  document.getElementById('tbName').textContent = name.split(' ')[0];
+  document.getElementById('tbAvatarLetter').textContent = letter;
+  document.getElementById('profileName').textContent = name;
+  document.getElementById('profileEmail').textContent = PROFILE.email || USER?.email || '';
+  document.getElementById('profileAvatarLetter').textContent = letter;
+
+  const uc = PROFILE.user_code || '—';
+  document.getElementById('profileCodeVal').textContent = uc;
+  document.getElementById('qrBigCode').textContent = uc;
+  document.getElementById('tbCode').textContent = uc;
+
+  document.getElementById('pFullName').textContent = name;
+  document.getElementById('pCI').textContent = PROFILE.ci || '—';
+  document.getElementById('pPhone').textContent = PROFILE.phone || '—';
+  document.getElementById('pEmail').textContent = PROFILE.email || USER?.email || '';
+  document.getElementById('pVehicle').textContent = RIDER.vehicle || '—';
+  document.getElementById('pZone').textContent = RIDER.zone || '—';
+
+  const dc = RIDER.deliveries_count || 0;
+  document.getElementById('statDeliveries').textContent = dc;
+  document.getElementById('statTotal').textContent = dc;
+
+  isActive = RIDER.is_active ?? false;
+  updateAvailUI();
+
+  if (PROFILE.avatar_url) setAvatarImg(PROFILE.avatar_url);
+}
+
+function setAvatarImg(url) {
+  document.getElementById('profileAvatar').innerHTML = `<img src="${url}" alt="avatar">`;
+  document.getElementById('tbAvatar').innerHTML = `<img src="${url}" alt="avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+}
+
+// ══════════════════════════════════════════════
+// NAVEGACIÓN
+// ══════════════════════════════════════════════
+const pages = ['mapPage','availPage','myOrdersPage','profilePage'];
+function goPage(n) {
+  pages.forEach((id, i) => {
+    document.getElementById(id).classList.toggle('active', i === n);
+    document.getElementById('nav' + i).classList.toggle('active', i === n);
+  });
+  if (n === 0 && mainMap) {
+    setTimeout(() => mainMap.invalidateSize(), 100);
+    if (!isActive && !hasActiveOrder) {
+      loadOrdersOnMap();
+    }
+  }
+  if (n === 1) loadAvailableOrders();
+  if (n === 2) loadMyOrders();
+  if (n === 3) checkPanicStatus();
+}
+
+// ══════════════════════════════════════════════
+// MAPA
+// ══════════════════════════════════════════════
+function initMainMap() {
+  mainMap = L.map('map', { zoomControl: false, attributionControl: false });
+  setTimeout(() => mainMap.invalidateSize(), 200);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OSM', maxZoom: 19
+  }).addTo(mainMap);
+  L.control.zoom({ position: 'bottomright' }).addTo(mainMap);
+  mainMap.setView([23.135, -82.358], 13);
+  setTimeout(() => loadOrdersOnMap(), 300);
+}
+
+function centerOnMe() {
+  if (myLat && mainMap) mainMap.setView([myLat, myLng], 16);
+}
+
+function startLocationTracking() {
+  if (locationWatcher) return;
+  if (!navigator.geolocation) {
+    console.warn('Geolocalización no disponible');
+    return;
+  }
+  toast('📍 GPS activado');
+  locationWatcher = navigator.geolocation.watchPosition(async pos => {
+    myLat = pos.coords.latitude;
+    myLng = pos.coords.longitude;
+    const ll = L.latLng(myLat, myLng);
+    if (!riderMarker) {
+      riderMarker = L.circleMarker(ll, {
+        radius: 10,
+        fillColor: hasActiveOrder ? '#f59e0b' : '#10b981',
+        color: '#fff',
+        weight: 3,
+        fillOpacity: 1
+      }).addTo(mainMap).bindPopup(`
+        <b>${PROFILE.full_name || 'Repartidor'}</b><br>
+        ${hasActiveOrder ? '🟡 Ocupado' : '🟢 Disponible'}
+      `);
+      mainMap.setView(ll, 15);
+    } else {
+      riderMarker.setLatLng(ll);
+      riderMarker.setStyle({
+        fillColor: hasActiveOrder ? '#f59e0b' : '#10b981'
+      });
+    }
+    await sb.from('riders').update({ lat: myLat, lng: myLng }).eq('profile_id', USER.id);
+    await sb.from('profiles').update({ lat: myLat, lng: myLng }).eq('id', USER.id);
+    gpsActive = true;
+  }, (err) => {
+    console.warn('Error de geolocalización:', err.message);
+    toast('⚠️ Error de GPS: ' + err.message);
+  }, { 
+    enableHighAccuracy: true, 
+    maximumAge: 5000,
+    timeout: 10000
+  });
+}
+
+function stopLocationTracking() {
+  if (locationWatcher !== null) {
+    navigator.geolocation.clearWatch(locationWatcher);
+    locationWatcher = null;
+    gpsActive = false;
+    toast('📍 GPS desactivado');
+  }
+}
+
+function updateGpsStatus() {
+  if (hasActiveOrder) {
+    if (!locationWatcher) startLocationTracking();
+  } else {
+    if (!isActive && locationWatcher) stopLocationTracking();
+    else if (isActive && !locationWatcher) startLocationTracking();
+  }
+}
+
+// ══════════════════════════════════════════════
+// VERIFICAR SI EL REPARTIDOR PUEDE CANCELAR
+// ══════════════════════════════════════════════
+function canCancelOrder(order) {
+  if (order.status !== 'active') return false;
+  if (order.trip_type === 'ida' && order.verify_ida_used) return false;
+  if (order.trip_type === 'vuelta' && order.verify_ida_used) return false;
+  return true;
+}
+
+// ══════════════════════════════════════════════
+// VERIFICAR SI HAY ENTREGAS ACTIVAS
+// ══════════════════════════════════════════════
+async function checkActiveOrders() {
+  const { data: rider } = await sb.from('riders').select('id').eq('profile_id', USER.id).single();
+  if (!rider) return;
+  
+  const { data: orders } = await sb.from('orders')
+    .select('id, status, trip_type, verify_ida_used, verify_vuelta_used, rider_id')
+    .eq('rider_id', rider.id)
+    .in('status', ['active', 'pending']);
+  
+  activeOrders = orders || [];
+  const previousState = hasActiveOrder;
+  hasActiveOrder = activeOrders.some(o => o.status === 'active');
+  updateGpsStatus();
+  updateAvailUI();
+  updateAvailToggleState();
+  const activeCount = activeOrders.filter(o => o.status === 'active').length;
+  updateMyOrdersBadge(activeCount);
+  if (previousState !== hasActiveOrder && riderMarker) {
+    riderMarker.setStyle({ fillColor: hasActiveOrder ? '#f59e0b' : '#10b981' });
+    riderMarker.setPopupContent(`
+      <b>${PROFILE.full_name || 'Repartidor'}</b><br>
+      ${hasActiveOrder ? '🟡 Ocupado' : '🟢 Disponible'}
+    `);
+  }
+  return activeOrders;
+}
+
+function updateAvailToggleState() {
+  const btn = document.getElementById('availToggle');
+  if (hasActiveOrder) {
+    btn.disabled = true;
+    btn.title = 'Tienes un pedido activo. Termínalo antes de desactivarte.';
+  } else if (activeOrders.length > 0) {
+    btn.disabled = true;
+    btn.title = 'No puedes desactivarte mientras tengas entregas pendientes';
+  } else {
+    btn.disabled = false;
+    btn.title = '';
+  }
+}
+
+// ══════════════════════════════════════════════
+// PEDIDOS EN MAPA
+// ══════════════════════════════════════════════
+async function loadOrdersOnMap() {
+  orderMarkers.forEach(m => { if (mainMap) mainMap.removeLayer(m); });
+  orderMarkers = [];
+
+  const { data: orders } = await sb.from('orders')
+    .select('*, profiles!client_id(full_name, phone)')
+    .eq('status', 'pending')
+    .is('rider_id', null) // 🔴 SOLO pedidos SIN rider asignado
+    .not('origin_lat', 'is', null)
+    .not('origin_lng', 'is', null);
+
+  if (!orders || orders.length === 0) return;
+
+  orders.forEach(o => {
+    const lat = o.origin_lat;
+    const lng = o.origin_lng;
+    if (!lat || !lng) return;
+
+    const clientName = o.profiles?.full_name || 'Cliente';
+    const dateStr = new Date(o.created_at).toLocaleTimeString('es-CU', { hour: '2-digit', minute: '2-digit' });
+    const dist = orderDistanceKm(o);
+    
+    const popupContent = `
+      <div class="popup-order">
+        <div class="popup-header">
+          <span class="popup-code">${o.code}</span>
+          <span class="popup-urgency ${o.urgency === 'Urgente' ? 'urgente' : ''}">
+            ${o.urgency === 'Urgente' ? '🔥' : ''} ${o.urgency || 'Normal'}
+          </span>
+        </div>
+        <div class="popup-meta">
+          <span><i class="ti ti-clock"></i> ${dateStr}</span>
+          <span><i class="ti ti-weight"></i> ${o.weight_kg || '—'} kg</span>
+        </div>
+        <div class="popup-meta">
+          ${tripTypeBadge(o)}
+          ${dist != null ? `<span class="avail-distance"><i class="ti ti-ruler-measure"></i> ${dist.toFixed(1)} km${o.trip_type === 'vuelta' ? ` (${(dist*2).toFixed(1)} ida y vuelta)` : ''}</span>` : ''}
+        </div>
+        <div class="popup-desc">
+          <div class="popup-desc-item"><i class="ti ti-package"></i> ${o.description}</div>
+          <div class="popup-desc-item"><i class="ti ti-user"></i> ${clientName}</div>
+        </div>
+        <div class="popup-address origin">
+          <div class="popup-address-label"><i class="ti ti-map-pin"></i> RECOGIDA</div>
+          <div class="popup-address-text">${o.origin_address || 'Ver en mapa'}</div>
+        </div>
+        <div class="popup-address dest">
+          <div class="popup-address-label"><i class="ti ti-flag"></i> ENTREGA</div>
+          <div class="popup-address-text">${o.dest_address || 'Ver en mapa'}</div>
+        </div>
+        <button class="popup-btn accept" onclick="acceptOrderFromMap('${o.id}')" ${hasActiveOrder ? 'disabled' : ''}>
+          <i class="ti ti-check"></i> ${hasActiveOrder ? 'OCUPADO' : 'ACEPTAR PEDIDO'}
+        </button>
+        <button class="popup-btn route" onclick="previewRouteFromCode('${o.id}')">
+          <i class="ti ti-map-route"></i> Ver ruta
+        </button>
+      </div>
+    `;
+
+    const marker = L.marker([lat, lng], { 
+      icon: L.divIcon({
+        html: `<div class="order-marker">📦</div>`,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        className: ''
+      })
+    })
+    .addTo(mainMap)
+    .bindPopup(popupContent, { maxWidth: 300, minWidth: 200 });
+
+    orderMarkers.push(marker);
+  });
+}
+
+// ══════════════════════════════════════════════
+// RUTA
+// ══════════════════════════════════════════════
+async function previewRouteFromCode(orderId) {
+  const { data: order } = await sb.from('orders').select('*').eq('id', orderId).single();
+  if (order) { showRouteOnMap(order); goPage(0); closeScan(); }
+}
+
+async function acceptOrderFromCode(orderId) {
+  if (!isActive) { toast('Actívate primero para aceptar pedidos'); return; }
+  if (hasActiveOrder) { toast('❌ Ya tienes un pedido activo. Termínalo antes de aceptar otro.'); return; }
+  await acceptOrder(orderId);
+}
+
+function showRouteOnMap(order) {
+  clearRoute();
+  if (!order || !order.origin_lat || !order.dest_lat) return;
+  currentOrderId = order.id;
+  const isRoundTrip = order.trip_type === 'vuelta';
+  const origin = L.latLng(order.origin_lat, order.origin_lng);
+  const dest = L.latLng(order.dest_lat, order.dest_lng);
+  let startPoint = (myLat && myLng) ? L.latLng(myLat, myLng) : origin;
+
+  const startIcon = L.divIcon({
+    html: `<div style="background:#d97706;width:30px;height:30px;border-radius:50%;border:3px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25);font-size:14px">🚴</div>`,
+    iconSize: [30, 30], iconAnchor: [15, 15], className: ''
+  });
+  const originIcon = L.divIcon({
+    html: `<div style="background:#3b82f6;width:28px;height:28px;border-radius:50% 50% 50% 0;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25);transform:rotate(-45deg);font-size:12px"><span style="transform:rotate(45deg)">📦</span></div>`,
+    iconSize: [28, 28], iconAnchor: [14, 28], className: ''
+  });
+  const destIcon = L.divIcon({
+    html: `<div style="background:#ea580c;width:28px;height:28px;border-radius:50% 50% 50% 0;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25);transform:rotate(-45deg);font-size:12px"><span style="transform:rotate(45deg)">🏁</span></div>`,
+    iconSize: [28, 28], iconAnchor: [14, 28], className: ''
+  });
+
+  const startMarker = L.marker(startPoint, { icon: startIcon }).addTo(mainMap);
+  const originMarker = L.marker(origin, { icon: originIcon }).addTo(mainMap);
+  const destMarker = L.marker(dest, { icon: destIcon }).addTo(mainMap);
+  currentOrderMarkers.push(startMarker, originMarker, destMarker);
+
+  const waypoints = isRoundTrip ? [startPoint, origin, dest, origin] : [startPoint, origin, dest];
+  currentRouteControl = L.Routing.control({
+    waypoints,
+    routeWhileDragging: false,
+    addWaypoints: false,
+    draggableWaypoints: false,
+    show: false,
+    lineOptions: { styles: [{ color: '#3b82f6', weight: 4, opacity: .8 }] },
+    createMarker: () => null
+  }).addTo(mainMap);
+
+  setTimeout(() => {
+    const bounds = L.latLngBounds([startPoint, origin, dest]);
+    mainMap.fitBounds(bounds, { padding: [40, 40] });
+  }, 300);
+
+  toast(isRoundTrip ? '📍 Ruta: recogida → destino → regreso' : '📍 Ruta: recogida → destino');
+}
+
+function clearRoute() {
+  if (currentRouteControl) { mainMap.removeControl(currentRouteControl); currentRouteControl = null; }
+  currentOrderMarkers.forEach(m => { if (mainMap) mainMap.removeLayer(m); });
+  currentOrderMarkers = [];
+  currentOrderId = null;
+}
+
+// ══════════════════════════════════════════════
+// ACEPTAR PEDIDO
+// ══════════════════════════════════════════════
+async function acceptOrderFromMap(orderId) {
+  if (!isActive) { toast('Actívate primero para aceptar pedidos'); return; }
+  if (hasActiveOrder) { toast('❌ Ya tienes un pedido activo. Termínalo antes de aceptar otro.'); return; }
+  await acceptOrder(orderId);
+}
+
+async function acceptOrder(orderId) {
+  const { data: rider } = await sb.from('riders').select('id').eq('profile_id', USER.id).single();
+  if (!rider) { toast('Error: perfil de repartidor no encontrado'); return; }
+
+  // Verificar nuevamente que el pedido sigue disponible (sin rider)
+  const { data: orderCheck } = await sb.from('orders')
+    .select('id, rider_id')
+    .eq('id', orderId)
+    .single();
+  
+  if (!orderCheck) {
+    toast('❌ El pedido ya no existe');
+    return;
+  }
+  
+  if (orderCheck.rider_id !== null) {
+    toast('❌ Este pedido ya fue aceptado por otro repartidor');
+    loadAvailableOrders();
+    loadOrdersOnMap();
+    return;
+  }
+
+  const { data: activeOrder } = await sb.from('orders')
+    .select('id').eq('rider_id', rider.id).eq('status', 'active').limit(1).single();
+  if (activeOrder) { toast('❌ Ya tienes un pedido activo. Termínalo antes de aceptar otro.'); return; }
+
+  const { error } = await sb.from('orders').update({
+    status: 'active',
+    rider_id: rider.id
+  }).eq('id', orderId).eq('status', 'pending').is('rider_id', null); // 🔴 Aseguramos que nadie más lo tomó
+
+  if (error) { 
+    console.error('❌ Error al aceptar pedido:', error); 
+    toast('❌ El pedido ya no está disponible');
+    loadAvailableOrders();
+    loadOrdersOnMap();
+    return; 
+  }
+
+  toast('✅ Pedido aceptado');
+  await checkActiveOrders();
+  loadAvailableOrders();
+  loadMyOrders();
+  loadOrdersOnMap();
+  goPage(0);
+}
+
+// ══════════════════════════════════════════════
+// DISPONIBILIDAD
+// ══════════════════════════════════════════════
+async function toggleAvailability() {
+  await checkActiveOrders();
+  if (hasActiveOrder) { toast('❌ No puedes desactivarte mientras tengas un pedido activo'); return; }
+  if (activeOrders.length > 0) { toast('No puedes desactivarte mientras tengas entregas pendientes'); return; }
+  isActive = !isActive;
+  await sb.from('riders').update({ is_active: isActive }).eq('profile_id', USER.id);
+  updateAvailUI();
+  updateGpsStatus();
+  if (isActive) { toast('✅ Ahora estás disponible'); loadAvailableOrders(); loadOrdersOnMap(); }
+  else { toast('Ahora estás inactivo'); orderMarkers.forEach(m => { if (mainMap) mainMap.removeLayer(m); }); orderMarkers = []; clearRoute(); }
+}
+
+function updateAvailUI() {
+  const btn = document.getElementById('availToggle');
+  const label = document.getElementById('availLabel');
+  const ms = document.getElementById('mapStatus');
+  const msText = document.getElementById('mapStatusText');
+  
+  if (hasActiveOrder) {
+    label.textContent = 'Ocupado';
+    btn.className = 'avail-toggle occupied';
+    btn.disabled = true;
+    btn.title = 'Tienes un pedido activo';
+    ms.className = 'map-status occupied';
+    msText.textContent = 'Ocupado';
+  } else {
+    label.textContent = isActive ? 'Activo' : 'Inactivo';
+    btn.className = 'avail-toggle ' + (isActive ? 'active' : 'inactive');
+    btn.disabled = false;
+    btn.title = '';
+    ms.className = 'map-status ' + (isActive ? 'on' : 'off');
+    msText.textContent = isActive ? 'Disponible' : 'Inactivo';
+  }
+  
+  if (riderMarker) {
+    riderMarker.setStyle({ fillColor: hasActiveOrder ? '#f59e0b' : (isActive ? '#10b981' : '#ef4444') });
+    riderMarker.setPopupContent(`
+      <b>${PROFILE.full_name || 'Repartidor'}</b><br>
+      ${hasActiveOrder ? '🟡 Ocupado' : (isActive ? '🟢 Disponible' : '🔴 Inactivo')}
+    `);
+  }
+  updateAvailToggleState();
+}
+
+// ══════════════════════════════════════════════
+// PEDIDOS DISPONIBLES
+// ══════════════════════════════════════════════
+async function loadAvailableOrders() {
+  const { data: orders } = await sb.from('orders')
+    .select('*, profiles!client_id(full_name, phone)')
+    .eq('status', 'pending')
+    .is('rider_id', null) // 🔴 SOLO pedidos SIN repartidor asignado
+    .order('created_at', { ascending: false });
+
+  const list = document.getElementById('availList');
+  if (!orders || orders.length === 0) {
+    document.getElementById('availSubtitle').textContent = isActive ? 'No hay pedidos disponibles ahora' : 'Actívate para ver pedidos cercanos';
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="ti ti-clipboard-x"></i></div><div class="empty-title">${isActive ? 'Sin pedidos disponibles' : 'Estás inactivo'}</div><div class="empty-sub">${isActive ? 'Cuando un cliente publique un pedido aparecerá aquí.' : 'Actívate con el botón de arriba para empezar a recibir pedidos.'}</div></div>`;
+    updateAvailBadge(0);
+    return;
+  }
+
+  document.getElementById('availSubtitle').textContent = `${orders.length} pedido${orders.length > 1 ? 's' : ''} disponibles`;
+  updateAvailBadge(orders.length);
+  list.innerHTML = orders.map(o => renderAvailCard(o)).join('');
+}
+
+function renderAvailCard(o) {
+  const urgClass = {
+    'Normal': 'urg-normal', 'Urgente': 'urg-urgente',
+    'Frágil': 'urg-fragil', 'Refrigerado': 'urg-refrigerado'
+  }[o.urgency] || 'urg-normal';
+
+  const dateStr = new Date(o.created_at).toLocaleString('es-CU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const client = o.profiles?.full_name || 'Cliente';
+  const dist = orderDistanceKm(o);
+
+  return `
+  <div class="avail-card">
+    <div class="avail-card-head">
+      <div><div class="avail-code">${o.code}</div><div class="avail-date">${dateStr}</div></div>
+      <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end">
+        <span class="urgency-pill ${urgClass}">${o.urgency || 'Normal'}</span>
+        ${tripTypeBadge(o)}
+      </div>
+    </div>
+    <div class="avail-body">
+      ${dist != null ? `<div class="avail-row"><i class="ti ti-ruler"></i><span class="avail-distance"><i class="ti ti-ruler-measure"></i> ${dist.toFixed(1)} km${o.trip_type === 'vuelta' ? ` (${(dist*2).toFixed(1)} km ida y vuelta)` : ''}</span></div>` : ''}
+      <div class="avail-row"><i class="ti ti-package"></i><span>${o.description}</span></div>
+      <div class="avail-row"><i class="ti ti-weight"></i><span>${o.weight_kg || '—'} kg</span></div>
+      <div class="avail-row"><i class="ti ti-map-pin"></i><span>${o.origin_address || 'Recogida en mapa'}</span></div>
+      <div class="avail-row"><i class="ti ti-flag"></i><span>${o.dest_address || 'Destino en mapa'}</span></div>
+      <div class="avail-row"><i class="ti ti-user"></i><span>${client}</span></div>
+      ${o.notes ? `<div class="avail-row"><i class="ti ti-notes"></i><span>${o.notes}</span></div>` : ''}
+    </div>
+    <div class="avail-actions">
+      <button class="btn-accept" onclick="acceptOrder('${o.id}')" ${hasActiveOrder ? 'disabled' : ''}>
+        <i class="ti ti-check"></i> ${hasActiveOrder ? 'Ocupado' : 'Aceptar'}
+      </button>
+      <button class="btn-preview-route" onclick="previewRouteFromCode('${o.id}')"><i class="ti ti-map-route"></i> Ruta</button>
+      <button class="btn-reject" onclick="toast('Pedido ignorado')">Ignorar</button>
+    </div>
+  </div>`;
+}
+
+function updateAvailBadge(n) {
+  const b = document.getElementById('availBadge');
+  b.textContent = n; b.style.display = n > 0 ? 'flex' : 'none';
+}
+
+// ══════════════════════════════════════════════
+// MIS ENTREGAS
+// ══════════════════════════════════════════════
+async function loadMyOrders() {
+  const { data: rider } = await sb.from('riders').select('id, deliveries_count').eq('profile_id', USER.id).single();
+  if (!rider) return;
+
+  const { data: orders } = await sb.from('orders')
+    .select('*, profiles!client_id(full_name, phone, user_code)')
+    .eq('rider_id', rider.id)
+    .order('created_at', { ascending: false });
+
+  const list = document.getElementById('myOrdersList');
+  if (!orders || orders.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="ti ti-bike"></i></div><div class="empty-title">Sin entregas aún</div><div class="empty-sub">Cuando aceptes un pedido aparecerá aquí para gestionarlo.</div></div>`;
+    updateMyOrdersBadge(0);
+    return;
+  }
+
+  const active = orders.filter(o => o.status === 'active');
+  updateMyOrdersBadge(active.length);
+  list.innerHTML = orders.map(o => renderDeliveryCard(o)).join('');
+  await checkActiveOrders();
+}
+
+function renderDeliveryCard(o) {
+  let statusClass = 'status-active';
+  let statusLabel = 'En tránsito';
+  let statusIcon = 'ti-bike';
+  
+  const isRound = o.trip_type === 'vuelta';
+  const outUsed = o.verify_ida_used || false;
+  const backUsed = o.verify_vuelta_used || false;
+  
+  if (o.status === 'done') {
+    if (isRound && outUsed && !backUsed) {
+      statusClass = 'status-waiting-back';
+      statusLabel = '🔄 Esperando vuelta';
+      statusIcon = 'ti-repeat';
+    } else if (isRound && outUsed && backUsed) {
+      statusClass = 'status-verified';
+      statusLabel = '✅ Completado (ida y vuelta)';
+      statusIcon = 'ti-shield-check';
+    } else if (!isRound && outUsed) {
+      statusClass = 'status-verified';
+      statusLabel = '✅ Entregado';
+      statusIcon = 'ti-shield-check';
+    } else {
+      statusClass = 'status-done';
+      statusLabel = 'Entregado';
+      statusIcon = 'ti-circle-check';
+    }
+  } else if (o.status === 'cancelled') {
+    statusClass = 'status-cancelled';
+    statusLabel = 'Cancelado';
+    statusIcon = 'ti-circle-x';
+  } else if (o.status === 'active') {
+    if (isRound && outUsed && !backUsed) {
+      statusClass = 'status-waiting-back';
+      statusLabel = '🔄 Ida verificada, esperando vuelta';
+      statusIcon = 'ti-repeat';
+    } else if (outUsed) {
+      statusClass = 'status-active';
+      statusLabel = '📦 En ruta (ida verificada)';
+      statusIcon = 'ti-bike';
+    } else {
+      statusClass = 'status-active';
+      statusLabel = '📦 Dirigiéndose a recoger';
+      statusIcon = 'ti-bike';
+    }
+  }
+  
+  const dateStr = new Date(o.created_at).toLocaleString('es-CU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const client = o.profiles?.full_name || 'Cliente';
+  const phone = o.profiles?.phone || '';
+  const dist = orderDistanceKm(o);
+  const canCancel = canCancelOrder(o);
+  
+  let verifyDisplay = '';
+  if (o.status === 'active') {
+    if (isRound) {
+      if (!outUsed) {
+        verifyDisplay = `<div class="verify-instruction"><div class="vicon">📍</div><div class="vtext"><strong>Paso 1: Verificar en la recogida</strong>Solicita al cliente en el punto de recogida el <strong>código de IDA</strong>. El cliente lo tiene en su app.</div></div>`;
+      } else if (outUsed && !backUsed) {
+        verifyDisplay = `<div class="verify-instruction" style="background:#fef3c7;border-color:#f59e0b;"><div class="vicon">🏁</div><div class="vtext" style="color:#92400e"><strong>Paso 2: Verificar al entregar</strong>Solicita al cliente en el <strong>destino</strong> el <strong>código de VUELTA</strong>. El cliente lo tiene en su app.</div></div>`;
+      }
+    } else {
+      if (!outUsed) {
+        verifyDisplay = `<div class="verify-instruction"><div class="vicon">🏁</div><div class="vtext"><strong>Verificar al entregar</strong>Solicita al cliente el <strong>código de verificación</strong> al llegar al destino. El cliente lo tiene en su app.</div></div>`;
+      }
+    }
+  }
+
+  let verifyActionHtml = '';
+  if (o.status === 'active' || o.status === 'pending') {
+    const isVerified = (isRound && outUsed && backUsed) || (!isRound && outUsed);
+    if (!isVerified) {
+      verifyActionHtml = `
+        <div class="verify-code-actions">
+          <button class="btn-verify-sm" onclick="openVerifyOverlay('${o.id}')">
+            <i class="ti ti-key"></i> Ingresar código del cliente
+          </button>
+        </div>
+      `;
+    } else {
+      verifyActionHtml = `
+        <div class="verify-code-actions">
+          <button class="btn-verify-sm used" disabled>
+            <i class="ti ti-check-circle"></i> Completado
+          </button>
+        </div>
+      `;
+    }
+  }
+
+  return `
+  <div class="delivery-card">
+    <div class="delivery-head">
+      <div><div class="delivery-code">${o.code}</div><div style="font-size:10px;color:var(--gray-400);font-weight:600">${dateStr}</div></div>
+      <span class="delivery-status ${statusClass}"><i class="ti ${statusIcon}"></i> ${statusLabel}</span>
+    </div>
+    <div class="delivery-body">
+      <div class="delivery-row" style="gap:6px">${tripTypeBadge(o)}${dist != null ? `<span class="avail-distance"><i class="ti ti-ruler-measure"></i> ${dist.toFixed(1)} km${o.trip_type === 'vuelta' ? ` (${(dist*2).toFixed(1)} ida y vuelta)` : ''}</span>` : ''}</div>
+      <div class="delivery-row"><i class="ti ti-package"></i><span>${o.description}</span></div>
+      <div class="delivery-row"><i class="ti ti-map-pin"></i><span>${o.origin_address || 'Ver en mapa'}</span></div>
+      <div class="delivery-row"><i class="ti ti-flag"></i><span>${o.dest_address || 'Ver en mapa'}</span></div>
+      ${verifyDisplay}
+      ${verifyActionHtml}
+      ${o.status === 'active' ? `<button class="btn-deliver" onclick="showRouteOnMapFromOrder('${o.id}')" style="width:100%;padding:8px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-family:'Nunito',sans-serif;font-size:11px;font-weight:700;cursor:pointer;margin:4px 0;"><i class="ti ti-map-route"></i> Ver ruta en el mapa</button>` : ''}
+      <div class="client-info">
+        <div class="client-avatar">${client[0]}</div>
+        <div><div class="client-name">${client}</div><div class="client-sub">${phone || 'Sin teléfono'}</div>${o.profiles?.user_code ? `<div class="client-sub">Código: ${o.profiles.user_code}</div>` : ''}</div>
+      </div>
+    </div>
+    ${o.status === 'active' ? `<div class="delivery-actions">${canCancel ? `<button class="btn-cancel-delivery" onclick="cancelDelivery('${o.id}')">Cancelar</button>` : ''}</div>` : ''}
+  </div>`;
+}
+
+// ══════════════════════════════════════════════
+// ENTREGA
+// ══════════════════════════════════════════════
+async function showRouteOnMapFromOrder(orderId) {
+  const { data: order } = await sb.from('orders').select('*').eq('id', orderId).single();
+  if (order) { showRouteOnMap(order); goPage(0); }
+}
+
+async function cancelDelivery(orderId) {
+  const { data: order } = await sb.from('orders').select('*').eq('id', orderId).single();
+  if (!order) { toast('❌ Pedido no encontrado'); return; }
+  if (!canCancelOrder(order)) { toast('❌ No puedes cancelar este pedido. Ya se verificó la recogida.'); return; }
+  if (!confirm('¿Cancelar esta entrega? El pedido volverá a estar disponible.')) return;
+  const { error } = await sb.from('orders').update({ status: 'pending', rider_id: null }).eq('id', orderId);
+  if (error) { console.error('❌ Error al cancelar entrega:', error); toast('Error al cancelar'); return; }
+  toast('Entrega cancelada');
+  await checkActiveOrders();
+  loadMyOrders();
+  loadAvailableOrders();
+  loadOrdersOnMap();
+  clearRoute();
+}
+
+function updateMyOrdersBadge(n) {
+  const b = document.getElementById('myOrdersBadge');
+  b.textContent = n; b.style.display = n > 0 ? 'flex' : 'none';
+}
+
+// ══════════════════════════════════════════════
+// REALTIME
+// ══════════════════════════════════════════════
+function subscribeRealtime() {
+  availSub = sb.channel('rider-avail')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => {
+      loadAvailableOrders();
+      loadOrdersOnMap();
+      toast('📦 Nuevo pedido disponible');
+    })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => {
+      loadAvailableOrders();
+      loadMyOrders();
+      loadOrdersOnMap();
+      checkActiveOrders();
+    })
+    .subscribe();
+}
+
+// ══════════════════════════════════════════════
+// QR
+// ══════════════════════════════════════════════
+function generateQRs() {
+  const code = PROFILE.user_code || 'LLV-XXXX';
+  const miniContainer = document.getElementById('qrMini');
+  const bigContainer = document.getElementById('qrBig');
+  
+  if (miniContainer) {
+    miniContainer.innerHTML = '';
+    try {
+      qrMiniInstance = new QRCode(miniContainer, { text: code, width: 44, height: 44, colorDark: '#ffffff', colorLight: 'rgba(255,255,255,0)', correctLevel: QRCode.CorrectLevel.H });
+    } catch(e) { miniContainer.innerHTML = `<span style="color:#fff;font-size:8px;">${code.substring(0,6)}</span>`; }
+  }
+  
+  if (bigContainer) {
+    bigContainer.innerHTML = '';
+    try {
+      qrBigInstance = new QRCode(bigContainer, { text: code, width: 180, height: 180, colorDark: '#0f172a', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+      setTimeout(() => { const canvas = bigContainer.querySelector('canvas'); if (canvas) qrBigDataUrl = canvas.toDataURL('image/png'); }, 100);
+    } catch(e) { bigContainer.innerHTML = `<div style="padding:16px;background:#f0f0f0;border-radius:10px;font-size:20px;font-weight:bold;color:#10b981;">${code}</div>`; }
+  }
+}
+
+window.downloadQR = function() {
+  if (!qrBigDataUrl) {
+    const bigContainer = document.getElementById('qrBig');
+    if (bigContainer) { const canvas = bigContainer.querySelector('canvas'); if (canvas) qrBigDataUrl = canvas.toDataURL('image/png'); }
+    if (!qrBigDataUrl) { toast('Espera a que el QR se genere'); return; }
+  }
+  const a = document.createElement('a');
+  a.href = qrBigDataUrl; a.download = 'codigo-llevitrae-repartidor.png'; a.click();
+};
+
+window.shareQR = async function() {
+  if (!qrBigDataUrl) {
+    const bigContainer = document.getElementById('qrBig');
+    if (bigContainer) { const canvas = bigContainer.querySelector('canvas'); if (canvas) qrBigDataUrl = canvas.toDataURL('image/png'); }
+    if (!qrBigDataUrl) { toast('Espera a que el QR se genere'); return; }
+  }
+  if (navigator.share && qrBigDataUrl) {
+    try {
+      const blob = await (await fetch(qrBigDataUrl)).blob();
+      const file = new File([blob], 'llevitrae-codigo.png', { type: 'image/png' });
+      await navigator.share({ title: 'Mi código LLevitrae', files: [file] });
+    } catch {}
+  } else {
+    await navigator.clipboard?.writeText(PROFILE.user_code || '');
+    toast('Código copiado');
+  }
+};
+
+// ══════════════════════════════════════════════
+// PÁNICO
+// ══════════════════════════════════════════════
+async function checkPanicStatus() {
+  try {
+    const { data: riderData } = await sb.from('riders').select('id').eq('profile_id', USER.id).single();
+    if (!riderData) return;
+    const { data, error } = await sb.from('alerts').select('id').eq('rider_id', riderData.id).eq('type', 'panic').eq('status', 'active').limit(1);
+    if (error) { console.error('Error al verificar estado de pánico:', error); return; }
+    panicActive = data && data.length > 0;
+    updatePanicUI();
+  } catch(e) { console.error('Error en checkPanicStatus:', e); }
+}
+
+function updatePanicUI() {
+  const btn = document.getElementById('panicBtn');
+  const text = document.getElementById('panicBtnText');
+  const statusText = document.getElementById('panicStatusText');
+  if (panicActive) {
+    btn.className = 'panic-btn active';
+    text.textContent = '🔴 Pánico activado';
+    statusText.className = 'panic-status-text active';
+    statusText.textContent = '🚨 ¡ALERTA ACTIVA! El administrador ha sido notificado.';
+  } else {
+    btn.className = 'panic-btn inactive';
+    text.textContent = '🆘 Activar pánico';
+    statusText.className = 'panic-status-text inactive';
+    statusText.textContent = '🔴 Sin alertas activas';
+  }
+}
+
+async function togglePanic() {
+  const btn = document.getElementById('panicBtn');
+  const text = document.getElementById('panicBtnText');
+  if (panicActive) {
+    if (!confirm('¿Desactivar la alerta de pánico?')) return;
+    btn.disabled = true; text.textContent = 'Desactivando...';
+    try {
+      const { data: riderData } = await sb.from('riders').select('id').eq('profile_id', USER.id).single();
+      if (riderData) { await sb.from('alerts').delete().eq('rider_id', riderData.id).eq('type', 'panic').eq('status', 'active'); }
+      panicActive = false;
+      if (panicInterval) { clearInterval(panicInterval); panicInterval = null; }
+      updatePanicUI();
+      toast('✅ Alerta de pánico desactivada');
+    } catch(e) { console.error('Error al desactivar pánico:', e); toast('❌ Error al desactivar la alerta'); }
+    btn.disabled = false;
+  } else {
+    if (!confirm('⚠️ ¿Activar alerta de pánico? Se notificará al administrador con tu ubicación.')) return;
+    btn.disabled = true; text.textContent = 'Activando...';
+    try {
+      const { data: riderData } = await sb.from('riders').select('id').eq('profile_id', USER.id).single();
+      if (!riderData) { toast('❌ Error: No se encontró el perfil de repartidor'); btn.disabled = false; text.textContent = '🆘 Activar pánico'; return; }
+      const { error } = await sb.from('alerts').insert({ type: 'panic', rider_id: riderData.id, rider_name: PROFILE.full_name, lat: myLat || 0, lng: myLng || 0, message: '🚨 Alerta de pánico activada desde el perfil', status: 'active', created_at: new Date().toISOString() });
+      if (error) { toast('❌ Error al enviar la alerta: ' + error.message); btn.disabled = false; text.textContent = '🆘 Activar pánico'; return; }
+      panicActive = true; updatePanicUI(); toast('🚨 ALERTA DE PÁNICO ACTIVADA');
+      if (panicInterval) clearInterval(panicInterval);
+      panicInterval = setInterval(async () => {
+        try {
+          const { data } = await sb.from('alerts').select('id').eq('rider_id', riderData.id).eq('type', 'panic').eq('status', 'active').limit(1);
+          if (!data || data.length === 0) { panicActive = false; if (panicInterval) { clearInterval(panicInterval); panicInterval = null; } updatePanicUI(); toast('✅ Alerta de pánico resuelta por el administrador'); }
+        } catch(e) {}
+      }, 5000);
+    } catch(e) { console.error('Error al activar pánico:', e); toast('❌ Error al activar la alerta'); }
+    btn.disabled = false;
+  }
+}
+
+// ══════════════════════════════════════════════
+// AVATAR
+// ══════════════════════════════════════════════
+async function handleAvatarUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  showLoader();
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const path = `${USER.id}/avatar.${ext}`;
+  const { error } = await sb.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type });
+  if (error) { hideLoader(); toast('Error subiendo imagen'); return; }
+  const { data } = sb.storage.from('avatars').getPublicUrl(path);
+  const url = data.publicUrl + '?t=' + Date.now();
+  await sb.from('profiles').update({ avatar_url: url }).eq('id', USER.id);
+  PROFILE.avatar_url = url;
+  setAvatarImg(url);
+  hideLoader();
+  toast('✅ Foto actualizada');
+}
+
+function toast(msg, dur = 4000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timeout);
+  t._timeout = setTimeout(() => t.classList.remove('show'), dur);
+}
+function showLoader() { document.getElementById('loader').classList.remove('hidden'); }
+function hideLoader() { document.getElementById('loader').classList.add('hidden'); }
+</script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js");
+  }
+</script>
+</body>
+</html>
