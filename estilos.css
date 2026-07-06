@@ -1,0 +1,149 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.canvas-container {
+  position: relative;
+  width: 1600px;
+  height: 900px;
+  background: transparent;
+  overflow: hidden;
+}
+
+/* Estilo base para los elementos */
+.rectangle {
+  position: absolute;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* ESTILO COMÚN PARA BOTONES */
+.btn {
+  border: none !important;
+  outline: none !important;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  background-color: transparent !important;
+}
+
+.btn:hover {
+  transform: scale(1.05);
+  opacity: 0.9;
+}
+
+.btn:active {
+  transform: scale(0.95);
+}
+
+/* Rectangle - LOGO (X:810, Y:449) - BOTÓN */
+.rectangle-logo {
+  top: 449px;
+  left: 810px;
+  width: 100px;
+  height: 100px;
+  background-image: url('./assets/Rectangle.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Rectangle 2 - TENGO ENVÍO (X:690, Y:449) - BOTÓN */
+.rectangle-envio {
+  top: 449px;
+  left: 690px;
+  width: 100px;
+  height: 100px;
+  background-image: url('./assets/Rectangle 2.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Rectangle 3 - TE LO LLEVO - SOLO IMAGEN, NO BOTÓN */
+.rectangle-llevo {
+  position: absolute;
+  top: 150px;
+  left: 600px;
+  width: 400px;
+  height: 191.48px;
+  background-image: url('./assets/Rectangle 3.png') !important;
+  background-size: contain !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  border: none !important;
+  outline: none !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Fondo */
+.background-rectangle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1600px;
+  height: 900px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-image: url('./assets/pag\ fondo\ t.png');
+  z-index: -1;
+}
+
+/* ══════════════════════════════════════════
+   MÓVIL — solo se activa en pantallas < 768px
+   El canvas de PC queda intacto arriba
+══════════════════════════════════════════ */
+@media (max-width: 767px) {
+
+  /* Canvas ocupa toda la pantalla, fondo y elementos siguen absolutos */
+  /* Safari fix: height se sobreescribe con --vh via JS */
+  .canvas-container {
+    width: 100%;
+    height: calc(var(--vh, 1vh) * 100);
+    min-height: 480px;
+    display: block;
+  }
+
+  .background-rectangle {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Logo — centrado horizontalmente, subido al 28% */
+  .rectangle-llevo {
+    position: absolute;
+    top: 28%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(300px, 78vw);
+    height: auto;
+    aspect-ratio: 400 / 191;
+  }
+
+  /* Botón CLIENTE — justo a la izquierda del centro */
+  .rectangle-envio {
+    position: absolute;
+    top: 55%;
+    left: calc(50% - 105px);
+    width: 100px;
+    height: 100px;
+  }
+
+  /* Botón REPARTIDOR — justo a la derecha del centro */
+  .rectangle-logo {
+    position: absolute;
+    top: 55%;
+    left: calc(50% + 5px);
+    width: 100px;
+    height: 100px;
+  }
+
+  .btn {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
