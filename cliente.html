@@ -1,0 +1,2899 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1e3a8a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="./assets/llevitrae.png">
+  <title>LLevitrae — Cliente</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Leaflet Routing -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css">
+  <script src="https://cdn.jsdelivr.net/npm/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
+
+  <!-- Leaflet Control Geocoder -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder@2.4.0/dist/Control.Geocoder.css">
+  <script src="https://cdn.jsdelivr.net/npm/leaflet-control-geocoder@2.4.0/dist/Control.Geocoder.js"></script>
+
+  <!-- Icons + Font -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- QR -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  
+  <!-- HTML5-QRCODE -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:    #2563eb;
+      --blue-dk: #1e40af;
+      --blue-lt: #dbeafe;
+      --green:   #16a34a;
+      --green-lt:#dcfce7;
+      --orange:  #ea580c;
+      --red:     #dc2626;
+      --gray-50: #f9fafb;
+      --gray-100:#f3f4f6;
+      --gray-200:#e5e7eb;
+      --gray-400:#9ca3af;
+      --gray-600:#4b5563;
+      --gray-900:#111827;
+      --nav-h:   60px;
+      --topbar-h:56px;
+      --radius:  14px;
+      --shadow:  0 4px 20px rgba(0,0,0,.10);
+    }
+
+    html, body { height: 100%; font-family: 'Nunito', sans-serif; background: var(--gray-50); color: var(--gray-900); }
+
+    #topbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: var(--topbar-h);
+      background: #fff; border-bottom: 1px solid var(--gray-200);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 12px;
+      box-shadow: 0 1px 8px rgba(0,0,0,.06);
+    }
+    .topbar-logo { display: none; }
+    .topbar-center {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      justify-content: center;
+    }
+    .topbar-right { 
+      display: flex; 
+      align-items: center; 
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .topbar-avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--blue-lt); border: 2px solid var(--blue);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 800; color: var(--blue);
+      cursor: pointer; overflow: hidden;
+      flex-shrink: 0;
+    }
+    .topbar-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .topbar-name { 
+      font-size: 13px; 
+      font-weight: 700; 
+      color: var(--gray-900);
+      white-space: nowrap;
+    }
+    .topbar-role {
+      font-size: 10px; font-weight: 800; background: var(--blue-lt);
+      color: var(--blue); padding: 2px 8px; border-radius: 20px;
+      white-space: nowrap;
+    }
+    .topbar-code {
+      font-size: 10px; font-weight: 800; color: var(--gray-400);
+      letter-spacing: 1px; cursor: pointer; transition: color .2s;
+      white-space: nowrap;
+    }
+    .topbar-code:hover { color: var(--blue); }
+
+    #main {
+      position: fixed;
+      top: var(--topbar-h); left: 0; right: 0;
+      bottom: var(--nav-h);
+      overflow: hidden;
+    }
+
+    #mapPage { height: 100%; }
+    #map {
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 0 !important;
+      position: absolute !important;
+      top: 0; left: 0; right: 0; bottom: 0;
+    }
+
+    #bottomNav {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+      height: var(--nav-h);
+      background: #fff; border-top: 1px solid var(--gray-200);
+      display: flex; align-items: stretch;
+      box-shadow: 0 -2px 12px rgba(0,0,0,.07);
+    }
+    .nav-item {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 2px;
+      border: none; background: transparent; cursor: pointer;
+      color: var(--gray-400); font-family: 'Nunito', sans-serif;
+      font-size: 10px; font-weight: 700; transition: color .2s;
+      padding: 6px 0;
+      position: relative;
+    }
+    .nav-item i { font-size: 22px; transition: transform .2s; }
+    .nav-item.active { color: var(--blue); }
+    .nav-item.active i { transform: translateY(-2px); }
+    .nav-badge {
+      position: absolute; top: 4px;
+      background: var(--red); color: #fff;
+      min-width: 16px; height: 16px; border-radius: 50%;
+      font-size: 9px; font-weight: 800;
+      display: none; align-items: center; justify-content: center;
+      padding: 0 4px;
+    }
+
+    .page {
+      position: absolute; inset: 0;
+      display: none; flex-direction: column;
+      overflow-y: auto; overflow-x: hidden;
+    }
+    .page.active { display: flex; }
+
+    #mapPage { overflow: hidden; }
+    #map { flex: 1; width: 100%; min-height: 0; }
+
+    .map-fab {
+      position: absolute; bottom: 16px; right: 16px; z-index: 50;
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--blue); color: #fff; border: none;
+      font-size: 22px; cursor: pointer; box-shadow: 0 4px 16px rgba(37,99,235,.4);
+      display: flex; align-items: center; justify-content: center;
+      transition: transform .2s;
+    }
+    .map-fab:hover { transform: scale(1.08); }
+
+    .riders-count {
+      position: absolute; top: 60px; left: 16px; z-index: 50;
+      background: #fff; border-radius: 12px; padding: 8px 14px;
+      box-shadow: var(--shadow); font-size: 12px; font-weight: 700;
+      color: var(--gray-600);
+    }
+    .riders-count span { color: var(--blue); font-size: 18px; font-weight: 900; }
+
+    .leaflet-popup-content-wrapper {
+      border-radius: 12px !important; box-shadow: var(--shadow) !important;
+      font-family: 'Nunito', sans-serif !important;
+    }
+    .rider-popup { font-size: 13px; font-weight: 700; color: var(--gray-900); }
+    .rider-popup small { color: var(--gray-400); font-weight: 600; }
+
+    .leaflet-control-geocoder {
+      border-radius: 12px !important;
+      box-shadow: var(--shadow) !important;
+      border: 2px solid var(--gray-200) !important;
+      margin-top: 10px !important;
+      margin-left: 10px !important;
+      width: 200px !important;
+    }
+    .leaflet-control-geocoder input {
+      border-radius: 10px !important;
+      font-family: 'Nunito', sans-serif !important;
+      font-size: 13px !important;
+      padding: 8px 12px !important;
+      width: 100% !important;
+    }
+
+    #orderPage { background: var(--gray-50); }
+
+    .order-header {
+      background: #fff; padding: 16px 16px 0;
+      border-bottom: 1px solid var(--gray-200);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .order-header h2 { font-size: 1.1rem; font-weight: 900; margin-bottom: 12px; }
+
+    .stepper {
+      display: flex; align-items: center; margin-bottom: 16px;
+    }
+    .step {
+      display: flex; flex-direction: column; align-items: center; flex: 1;
+      position: relative;
+    }
+    .step:not(:last-child)::after {
+      content: ''; position: absolute;
+      top: 14px; left: calc(50% + 14px); right: calc(-50% + 14px);
+      height: 2px; background: var(--gray-200);
+      transition: background .3s;
+    }
+    .step.done:not(:last-child)::after { background: var(--blue); }
+
+    .step-dot {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--gray-200); color: var(--gray-400);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 800; transition: all .3s;
+      position: relative; z-index: 1;
+    }
+    .step.active .step-dot { background: var(--blue); color: #fff; box-shadow: 0 0 0 4px var(--blue-lt); }
+    .step.done .step-dot { background: var(--blue); color: #fff; }
+    .step-label { font-size: 10px; font-weight: 700; color: var(--gray-400); margin-top: 4px; text-align: center; }
+    .step.active .step-label, .step.done .step-label { color: var(--blue); }
+
+    .step-panel { display: none; padding: 16px; }
+    .step-panel.active { display: block; }
+
+    .field { margin-bottom: 14px; }
+    .field label {
+      display: block; font-size: 11px; font-weight: 800;
+      color: var(--gray-600); margin-bottom: 5px; letter-spacing: .3px;
+    }
+    .field input, .field select, .field textarea {
+      display: block; width: 100%;
+      padding: 11px 14px; font-size: 14px; font-weight: 600;
+      font-family: 'Nunito', sans-serif; color: var(--gray-900);
+      background: #fff; border: 1.5px solid var(--gray-200);
+      border-radius: 11px; outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      resize: none;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+    }
+    .field input::placeholder, .field textarea::placeholder { color: var(--gray-400); font-weight: 500; }
+
+    .urgency-chips, .trip-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .urg-chip, .trip-chip {
+      padding: 7px 14px; border-radius: 20px; font-size: 12px; font-weight: 800;
+      border: 2px solid var(--gray-200); background: #fff; cursor: pointer;
+      transition: all .2s; color: var(--gray-600);
+    }
+    .urg-chip.active { border-color: var(--orange); background: #fff7ed; color: var(--orange); }
+    .trip-chip.active { border-color: var(--blue); background: var(--blue-lt); color: var(--blue); }
+
+    .weight-display {
+      font-size: 2.2rem; font-weight: 900; color: var(--blue);
+      text-align: center; margin: 8px 0 4px; letter-spacing: -1px;
+    }
+    .weight-display small { font-size: 1rem; color: var(--gray-400); font-weight: 600; }
+
+    input[type=range] {
+      width: 100%; accent-color: var(--blue);
+      height: 6px; cursor: pointer;
+    }
+    .weight-labels {
+      display: flex; justify-content: space-between;
+      font-size: 10px; color: var(--gray-400); font-weight: 700; margin-top: 4px;
+    }
+
+    #routeMap { 
+      height: 300px; 
+      border-radius: var(--radius); 
+      overflow: hidden; 
+      border: 1.5px solid var(--gray-200);
+      background: #f0f0f0;
+      position: relative;
+    }
+    #routeMap .leaflet-control-container { z-index: 10; }
+
+    .addr-card {
+      background: #fff; border: 1.5px solid var(--gray-200);
+      border-radius: 11px; padding: 12px 14px; font-size: 13px; font-weight: 700;
+      display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px;
+    }
+    .addr-card i { font-size: 18px; margin-top: 1px; flex-shrink: 0; }
+    .addr-card .addr-text { color: var(--gray-600); font-weight: 600; font-size: 12px; line-height: 1.4; }
+    .addr-card .addr-label { font-size: 10px; font-weight: 800; color: var(--gray-400); text-transform: uppercase; letter-spacing: .5px; }
+
+    .map-hint {
+      background: var(--blue-lt); border-radius: 10px; padding: 10px 14px;
+      font-size: 12px; font-weight: 700; color: var(--blue);
+      display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+    }
+
+    .summary-card {
+      background: #fff; border: 1.5px solid var(--gray-200);
+      border-radius: var(--radius); overflow: hidden; margin-bottom: 12px;
+    }
+    .summary-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 16px; border-bottom: 1px solid var(--gray-100);
+    }
+    .summary-row:last-child { border-bottom: none; }
+    .summary-row i { font-size: 18px; color: var(--blue); width: 20px; flex-shrink: 0; }
+    .summary-row .s-label { font-size: 10px; font-weight: 800; color: var(--gray-400); text-transform: uppercase; }
+    .summary-row .s-val { font-size: 13px; font-weight: 700; color: var(--gray-900); }
+
+    .publish-btn {
+      width: 100%; padding: 14px; background: linear-gradient(135deg, var(--blue), var(--blue-dk));
+      color: #fff; border: none; border-radius: var(--radius);
+      font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 900;
+      cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,.35);
+      transition: transform .15s, box-shadow .15s; margin-top: 4px;
+    }
+    .publish-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(37,99,235,.4); }
+    .publish-btn:disabled { opacity: .55; transform: none; cursor: not-allowed; }
+
+    .step-nav { display: flex; gap: 10px; margin-top: 16px; }
+    .btn-back {
+      flex: 1; padding: 12px; background: var(--gray-100); color: var(--gray-600);
+      border: 1.5px solid var(--gray-200); border-radius: 11px;
+      font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 800; cursor: pointer;
+    }
+    .btn-next {
+      flex: 2; padding: 12px; background: var(--blue); color: #fff;
+      border: none; border-radius: 11px;
+      font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 800; cursor: pointer;
+      transition: opacity .2s;
+    }
+    .btn-next:hover { opacity: .9; }
+
+    #ordersPage { background: var(--gray-50); }
+
+    .page-header {
+      background: #fff; padding: 16px;
+      border-bottom: 1px solid var(--gray-200);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .page-header h2 { font-size: 1.1rem; font-weight: 900; }
+
+    .order-card {
+      background: #fff; border-radius: var(--radius);
+      border: 1.5px solid var(--gray-200); margin: 12px 16px 0;
+      overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.04);
+      transition: box-shadow .2s;
+    }
+    .order-card:hover { box-shadow: var(--shadow); }
+    .order-card.cancelled { opacity: 0.6; }
+    .order-card.cancelled .btn-cancel-order { display: none !important; }
+    .order-card.cancelled .verify-code-box { display: none !important; }
+    .order-card.cancelled .track-map-wrap { display: none !important; }
+    .order-card.cancelled .rider-info { display: none !important; }
+
+    .order-card-head {
+      padding: 13px 16px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .order-code { font-size: 13px; font-weight: 900; color: var(--blue); }
+    .order-date { font-size: 11px; color: var(--gray-400); font-weight: 600; }
+
+    .pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 800;
+    }
+    .pill-pending  { background: #fefce8; color: #854d0e; }
+    .pill-active   { background: var(--blue-lt); color: var(--blue); }
+    .pill-done     { background: var(--green-lt); color: var(--green); }
+    .pill-verified { background: #fef3c7; color: #d97706; }
+    .pill-cancelled{ background: #fee2e2; color: var(--red); }
+
+    .order-card-body { padding: 0 16px 14px; }
+    .order-detail {
+      display: flex; gap: 8px; align-items: flex-start;
+      font-size: 12px; color: var(--gray-600); font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .order-detail i { color: var(--blue); margin-top: 1px; flex-shrink: 0; }
+
+    .verify-code-box {
+      background: #fef3c7;
+      border: 1.5px solid #fcd34d;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin: 8px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .verify-code-box .label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #92400e;
+    }
+    .verify-code-box .code {
+      font-family: 'Courier New', monospace;
+      font-size: 18px;
+      font-weight: 900;
+      color: #d97706;
+      letter-spacing: 3px;
+    }
+    .verify-code-box .status {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 10px;
+      border-radius: 20px;
+    }
+    .verify-code-box .status.used {
+      background: var(--green-lt);
+      color: var(--green);
+    }
+    .verify-code-box .status.pending {
+      background: #fef3c7;
+      color: #d97706;
+    }
+
+    .track-map-wrap { margin: 10px 0 4px; border-radius: 11px; overflow: hidden; }
+    .track-map { height: 180px; width: 100%; }
+
+    .rider-info {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--gray-50); border-radius: 10px; padding: 10px 12px; margin-top: 8px;
+    }
+    .rider-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--green-lt); color: var(--green);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; flex-shrink: 0;
+    }
+    .rider-name { font-size: 13px; font-weight: 800; }
+    .rider-vehicle { font-size: 11px; color: var(--gray-400); font-weight: 600; }
+
+    .empty-state {
+      text-align: center; padding: 60px 24px;
+    }
+    .empty-icon { font-size: 48px; color: var(--gray-200); margin-bottom: 12px; }
+    .empty-title { font-size: 1rem; font-weight: 800; color: var(--gray-600); }
+    .empty-sub { font-size: 13px; color: var(--gray-400); margin-top: 4px; }
+    .empty-btn {
+      margin-top: 20px; padding: 12px 28px;
+      background: var(--blue); color: #fff; border: none; border-radius: 11px;
+      font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 800; cursor: pointer;
+    }
+
+    .btn-cancel-order {
+      margin-top: 10px; width: 100%; padding: 10px;
+      background: #fee2e2; color: var(--red); border: 1.5px solid #fca5a5; border-radius: 10px;
+      font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 800; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn-cancel-order:active { opacity: .8; }
+
+    #profilePage { background: var(--gray-50); }
+
+    .profile-hero {
+      background: linear-gradient(145deg, var(--blue), var(--blue-dk));
+      padding: 28px 16px 48px; 
+      text-align: center; 
+      position: relative;
+      border-radius: 0 0 28px 28px;
+      box-shadow: 0 8px 24px rgba(37,99,235,.25);
+    }
+
+    .profile-avatar-wrap {
+      position: relative;
+      display: inline-block;
+      margin-bottom: 4px;
+    }
+
+    .profile-avatar {
+      width: 88px; 
+      height: 88px; 
+      border-radius: 50%;
+      border: 4px solid rgba(255,255,255,.6);
+      background: rgba(255,255,255,.2);
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
+      font-size: 2.4rem; 
+      font-weight: 900; 
+      color: #fff;
+      overflow: hidden; 
+      margin: 0 auto 4px; 
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0,0,0,.15);
+      transition: transform .2s;
+    }
+    .profile-avatar:hover { transform: scale(1.02); }
+    .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    .avatar-edit-btn {
+      position: absolute; 
+      bottom: 2px; 
+      right: -2px;
+      width: 30px; 
+      height: 30px; 
+      border-radius: 50%;
+      background: #fff; 
+      border: 2px solid var(--blue);
+      cursor: pointer;
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
+      font-size: 13px; 
+      color: var(--blue); 
+      box-shadow: 0 2px 10px rgba(0,0,0,.2);
+      transition: transform .2s;
+    }
+    .avatar-edit-btn:hover { transform: scale(1.1); }
+
+    .profile-name { 
+      font-size: 1.2rem; 
+      font-weight: 900; 
+      color: #fff; 
+      margin-bottom: 2px; 
+      text-shadow: 0 1px 4px rgba(0,0,0,.1);
+    }
+    .profile-email { 
+      font-size: 12px; 
+      color: rgba(255,255,255,.8); 
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .profile-code {
+      display: inline-flex; 
+      align-items: center; 
+      gap: 6px;
+      background: rgba(255,255,255,.18);
+      backdrop-filter: blur(4px);
+      border-radius: 40px; 
+      padding: 5px 16px 5px 12px;
+      font-size: 13px; 
+      font-weight: 900; 
+      color: #fff; 
+      margin-top: 4px; 
+      letter-spacing: 1.5px;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,.15);
+      transition: background .2s;
+    }
+    .profile-code:hover { background: rgba(255,255,255,.28); }
+
+    .qr-mini-wrap {
+      position: absolute; 
+      top: 16px; 
+      right: 16px;
+      background: rgba(255,255,255,.12);
+      backdrop-filter: blur(4px);
+      border-radius: 12px; 
+      padding: 6px 6px 3px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border: 1px solid rgba(255,255,255,.1);
+      transition: background .2s;
+    }
+    .qr-mini-wrap:hover { background: rgba(255,255,255,.2); }
+    .qr-mini-wrap #qrMini {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .qr-mini-wrap #qrMini canvas {
+      display: block;
+      border-radius: 8px;
+      max-width: 50px;
+      max-height: 50px;
+      background: white;
+    }
+    .qr-mini-label { 
+      font-size: 8px; 
+      font-weight: 800; 
+      color: rgba(255,255,255,.85); 
+      text-align: center; 
+      margin-top: 2px; 
+    }
+
+    .profile-cards { 
+      padding: 14px 14px 24px; 
+      margin-top: -24px; 
+      position: relative;
+      z-index: 2;
+    }
+
+    .pcard {
+      background: #fff; 
+      border-radius: var(--radius);
+      border: 1px solid var(--gray-200); 
+      margin-bottom: 12px;
+      overflow: hidden; 
+      box-shadow: 0 4px 16px rgba(0,0,0,.04);
+    }
+
+    .pcard-title {
+      padding: 12px 16px 8px; 
+      font-size: 10px; 
+      font-weight: 900;
+      color: var(--gray-400); 
+      text-transform: uppercase; 
+      letter-spacing: 1px;
+      border-bottom: 1px solid var(--gray-100);
+      background: var(--gray-50);
+    }
+
+    .prow {
+      display: flex; 
+      align-items: center; 
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--gray-100);
+      transition: background .1s;
+    }
+    .prow:last-child { border-bottom: none; }
+    .prow:hover { background: var(--gray-50); }
+
+    .prow-icon { 
+      color: var(--blue); 
+      font-size: 17px; 
+      width: 28px; 
+      flex-shrink: 0; 
+      opacity: .7;
+    }
+    .prow-content { flex: 1; min-width: 0; }
+    .prow-label { 
+      font-size: 9px; 
+      font-weight: 800; 
+      color: var(--gray-400); 
+      text-transform: uppercase; 
+      letter-spacing: .5px;
+    }
+    .prow-val { 
+      font-size: 13px; 
+      font-weight: 700; 
+      color: var(--gray-900); 
+      line-height: 1.4;
+    }
+
+    .prow input {
+      width: 100%; 
+      border: none; 
+      outline: none; 
+      padding: 0;
+      font-size: 13px; 
+      font-weight: 700; 
+      font-family: 'Nunito', sans-serif;
+      color: var(--gray-900); 
+      background: transparent;
+      border-bottom: 1.5px solid transparent;
+      transition: border-color .2s;
+    }
+    .prow input:focus { 
+      border-bottom-color: var(--blue); 
+    }
+    .prow input::placeholder { color: var(--gray-400); font-weight: 500; }
+
+    .save-btn {
+      width: 100%; 
+      padding: 13px; 
+      background: linear-gradient(135deg, var(--blue), var(--blue-dk));
+      color: #fff; 
+      border: none; 
+      border-radius: var(--radius);
+      font-family: 'Nunito', sans-serif; 
+      font-size: 15px; 
+      font-weight: 800;
+      cursor: pointer; 
+      margin-top: 4px;
+      box-shadow: 0 4px 16px rgba(37,99,235,.3);
+      transition: transform .15s, box-shadow .15s;
+    }
+    .save-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(37,99,235,.35); }
+
+    .logout-btn {
+      width: 100%; 
+      padding: 13px; 
+      background: #fff;
+      color: var(--red); 
+      border: 1.5px solid #fecaca; 
+      border-radius: var(--radius);
+      font-family: 'Nunito', sans-serif; 
+      font-size: 14px; 
+      font-weight: 800;
+      cursor: pointer; 
+      margin-top: 10px;
+      transition: all .2s;
+    }
+    .logout-btn:hover { background: #fef2f2; border-color: var(--red); }
+
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.65); z-index: 500;
+      align-items: center; justify-content: center; padding: 16px;
+    }
+    .overlay.show { display: flex; }
+    .overlay-box {
+      background: #fff; border-radius: 20px; padding: 20px 16px;
+      width: 100%; max-width: 380px; text-align: center;
+      box-shadow: 0 24px 60px rgba(0,0,0,.3); position: relative;
+    }
+    .overlay-close {
+      position: absolute; top: 10px; right: 10px;
+      background: var(--gray-100); border: none; border-radius: 50%;
+      width: 28px; height: 28px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; color: var(--gray-600);
+    }
+    .overlay-box #qrBig {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 10px auto;
+    }
+    .overlay-box #qrBig canvas {
+      display: block;
+      border-radius: 12px;
+      max-width: 200px;
+      max-height: 200px;
+    }
+    .overlay-box h3 { font-size: 1rem; font-weight: 900; margin-bottom: 3px; }
+    .overlay-box p  { font-size: 11px; color: var(--gray-400); font-weight: 600; margin-bottom: 6px; }
+    .user-code-big  { font-size: 1.6rem; font-weight: 900; letter-spacing: 4px; color: var(--blue); margin: 4px 0 14px; }
+    .ov-actions { display: flex; gap: 8px; margin-top: 0; }
+    .ov-actions button {
+      flex: 1; padding: 10px; border-radius: 10px;
+      font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 800; cursor: pointer;
+    }
+    .ov-btn-ghost { background: var(--gray-100); color: var(--gray-600); border: 1.5px solid var(--gray-200); }
+    .ov-btn-main  { background: var(--blue); color: #fff; border: none; }
+
+    /* ESCÁNER */
+    .scanner-wrap {
+      position: relative;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #000;
+      aspect-ratio: 1/1;
+      max-width: 280px;
+      margin: 10px auto;
+    }
+    #scannerContainer {
+      width: 100%;
+      height: 100%;
+      min-height: 250px;
+    }
+    #scannerContainer video {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover;
+    }
+    .scan-frame {
+      position: absolute;
+      inset: 14px;
+      border: 3px solid var(--blue);
+      border-radius: 10px;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .scan-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg,transparent,var(--blue),transparent);
+      animation: scanAnim 2s linear infinite;
+      z-index: 11;
+    }
+    @keyframes scanAnim {
+      0% { top: 0; }
+      100% { top: 100%; }
+    }
+
+    .scan-result {
+      border-radius: 12px; padding: 14px; margin-top: 10px; text-align: left;
+    }
+    .scan-result.ok  { background: var(--green-lt); border: 1.5px solid #6ee7b7; }
+    .scan-result.err { background: #fee2e2; border: 1.5px solid #fca5a5; }
+    .scan-result-name { font-size: 0.95rem; font-weight: 900; margin-bottom: 3px; }
+    .scan-result.ok .scan-result-name { color: var(--green); }
+    .scan-result.err .scan-result-name { color: var(--red); }
+    .scan-result-row { 
+      display: flex; gap: 5px; font-size: 11px; font-weight: 600; 
+      color: var(--gray-600); margin-top: 3px; 
+    }
+    .scan-result-row i { color: var(--green); }
+    .scan-result-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 800;
+      margin-top: 6px;
+    }
+    .badge-client { background: var(--blue-lt); color: var(--blue); }
+    .badge-rider  { background: var(--green-lt); color: var(--green); }
+
+    .btn-camera-activate {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, var(--blue), #1d4ed8);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Nunito', sans-serif;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all .3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 8px;
+      box-shadow: 0 4px 16px rgba(37,99,235,.3);
+    }
+    .btn-camera-activate:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(37,99,235,.4);
+    }
+    .btn-camera-activate:active {
+      transform: scale(.97);
+    }
+    .btn-camera-activate:disabled {
+      opacity: .6;
+      transform: none !important;
+      cursor: not-allowed;
+    }
+
+    .manual-search-row {
+      display: flex; gap: 6px; margin-top: 6px; align-items: center;
+    }
+    .manual-search-row input {
+      flex: 1; padding: 8px 12px;
+      border: 1.5px solid var(--gray-200); border-radius: 10px;
+      font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 600;
+      outline: none; background: #fff; color: var(--gray-900);
+    }
+    .manual-search-row input:focus { border-color: var(--blue); }
+    .manual-search-row button {
+      background: var(--blue); color: #fff;
+      border: none; border-radius: 10px; padding: 8px 14px;
+      font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 800;
+      cursor: pointer; transition: all .2s;
+    }
+    .manual-search-row button:hover { background: var(--blue-dk); }
+
+    #toast {
+      position: fixed; bottom: calc(var(--nav-h) + 12px); left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: #111; color: #fff; padding: 10px 20px;
+      border-radius: 20px; font-size: 12px; font-weight: 700;
+      opacity: 0; transition: all .3s; z-index: 600; white-space: nowrap;
+      pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    #loader {
+      position: fixed; inset: 0; background: rgba(255,255,255,.85);
+      z-index: 700; display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 10px;
+    }
+    #loader.hidden { display: none; }
+    .spinner {
+      width: 34px; height: 34px; border: 3px solid var(--blue-lt);
+      border-top-color: var(--blue); border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #avatarInput { display: none; }
+    #businessLogoInput { display: none; }
+
+    .leaflet-pane { z-index: 1 !important; }
+    .leaflet-top, .leaflet-bottom { z-index: 2 !important; }
+
+    #topbar {
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-left: calc(12px + env(safe-area-inset-left, 0px));
+      padding-right: calc(12px + env(safe-area-inset-right, 0px));
+      height: calc(56px + env(safe-area-inset-top, 0px));
+    }
+    #main {
+      top: calc(56px + env(safe-area-inset-top, 0px));
+      bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+    }
+    #bottomNav {
+      height: calc(60px + env(safe-area-inset-bottom, 0px));
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      padding-left: env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+    }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    img { -webkit-touch-callout: none; }
+
+    .rider-marker {
+      width: 40px; height: 40px; background: #16a34a; border-radius: 50%;
+      border: 3px solid #fff; box-shadow: 0 2px 12px rgba(22,163,74,0.4);
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
+      transition: all .2s;
+    }
+    .rider-marker:hover { transform: scale(1.1); box-shadow: 0 4px 20px rgba(22,163,74,0.5); }
+
+    .package-marker {
+      width: 40px; height: 40px; background: #fff; border-radius: 50%;
+      border: 4px solid #f59e0b; box-shadow: 0 3px 10px rgba(0,0,0,0.28);
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
+      cursor: pointer;
+    }
+    .package-marker.active { border-color: #16a34a; }
+    .package-marker.cancelled { 
+      border-color: #9ca3af; 
+      opacity: 0.5;
+      filter: grayscale(1);
+    }
+
+    @media (max-width: 480px) {
+      .topbar-name { font-size: 12px; }
+      .topbar-role { font-size: 9px; padding: 1px 6px; }
+      .topbar-code { font-size: 9px; }
+      .scanner-wrap { max-width: 220px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="spinner"></div>
+  <span style="font-size:12px;font-weight:700;color:#6b7280">Cargando...</span>
+</div>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div class="topbar-logo"></div>
+  <div class="topbar-center">
+    <div>
+      <div class="topbar-name" id="tbName">—</div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <div class="topbar-role">Cliente</div>
+        <div class="topbar-code" id="tbCode" onclick="openQROverlay()">—</div>
+      </div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-avatar" id="tbAvatar" onclick="goPage(4)">
+      <span id="tbAvatarLetter">?</span>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- P0: MAPA -->
+  <div class="page active" id="mapPage">
+    <div id="map"></div>
+    <div class="riders-count" id="ridersCount">
+      <span id="ridersN">0</span> repartidores disponibles
+    </div>
+    <button class="map-fab" onclick="centerOnMe()" title="Mi ubicación">
+      <i class="ti ti-navigation"></i>
+    </button>
+  </div>
+
+  <!-- P1: NUEVO PEDIDO -->
+  <div class="page" id="orderPage">
+    <div class="order-header">
+      <h2><i class="ti ti-plus" style="color:var(--blue)"></i> Nuevo pedido</h2>
+      <div class="stepper">
+        <div class="step active" id="stp0"><div class="step-dot">1</div><div class="step-label">¿Qué llevas?</div></div>
+        <div class="step" id="stp1"><div class="step-dot">2</div><div class="step-label">Ruta</div></div>
+        <div class="step" id="stp2"><div class="step-dot">3</div><div class="step-label">Publicar</div></div>
+      </div>
+    </div>
+
+    <div class="step-panel active" id="sp0">
+      <div class="field">
+        <label>¿Qué se va a llevar? *</label>
+        <textarea id="oDesc" rows="3" placeholder="Ej: Caja de medicamentos, documentos importantes..."></textarea>
+      </div>
+      <div class="field">
+        <label>Peso aproximado</label>
+        <div class="weight-display"><span id="weightVal">5</span><small> kg</small></div>
+        <input type="range" id="weightSlider" min="1" max="50" value="5" oninput="document.getElementById('weightVal').textContent=this.value">
+        <div class="weight-labels"><span>1 kg</span><span>25 kg</span><span>50 kg</span></div>
+      </div>
+      <div class="field">
+        <label>Urgencia</label>
+        <div class="urgency-chips">
+          <div class="urg-chip active" onclick="selectUrgency(this,'Normal')">Normal</div>
+          <div class="urg-chip" onclick="selectUrgency(this,'Urgente')">🔥 Urgente</div>
+          <div class="urg-chip" onclick="selectUrgency(this,'Frágil')">🥚 Frágil</div>
+          <div class="urg-chip" onclick="selectUrgency(this,'Refrigerado')">❄️ Refrigerado</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Tipo de viaje</label>
+        <div class="trip-chips">
+          <div class="trip-chip active" onclick="selectTripType(this,'ida')">🚀 Solo ida</div>
+          <div class="trip-chip" onclick="selectTripType(this,'vuelta')">🔄 Ida y vuelta</div>
+        </div>
+      </div>
+      <div class="field" style="margin-top:8px">
+        <label>Nota adicional (opcional)</label>
+        <input type="text" id="oNote" placeholder="Instrucciones especiales...">
+      </div>
+      <div class="step-nav">
+        <button class="btn-next" onclick="goStep(1)">Continuar → Ruta</button>
+      </div>
+    </div>
+
+    <div class="step-panel" id="sp1">
+      <div class="map-hint">
+        <i class="ti ti-info-circle" style="flex-shrink:0"></i>
+        Toca el mapa o <strong>busca un lugar</strong> para marcar primero el punto de recogida, luego el destino.
+      </div>
+      <div id="routeMap"></div>
+      <div style="margin-top:12px">
+        <div class="addr-card" id="originCard">
+          <i class="ti ti-map-pin" style="color:var(--blue)"></i>
+          <div><div class="addr-label">Recogida</div><div class="addr-text" id="originText">Toca el mapa o busca un lugar</div></div>
+        </div>
+        <div class="addr-card" id="destCard">
+          <i class="ti ti-flag" style="color:var(--green)"></i>
+          <div><div class="addr-label">Destino</div><div class="addr-text" id="destText">Toca el mapa o busca un lugar</div></div>
+        </div>
+      </div>
+      <div class="step-nav">
+        <button class="btn-back" onclick="goStep(0)">← Atrás</button>
+        <button class="btn-next" id="step2Next" onclick="goStep(2)" disabled>Ver resumen →</button>
+      </div>
+    </div>
+
+    <div class="step-panel" id="sp2">
+      <div class="summary-card" id="summaryCard">
+        <div class="summary-row"><i class="ti ti-package"></i><div><div class="s-label">Descripción</div><div class="s-val" id="sumDesc">—</div></div></div>
+        <div class="summary-row"><i class="ti ti-weight"></i><div><div class="s-label">Peso</div><div class="s-val" id="sumWeight">—</div></div></div>
+        <div class="summary-row"><i class="ti ti-flame"></i><div><div class="s-label">Urgencia</div><div class="s-val" id="sumUrgency">—</div></div></div>
+        <div class="summary-row"><i class="ti ti-arrows-left-right"></i><div><div class="s-label">Tipo de viaje</div><div class="s-val" id="sumTripType">—</div></div></div>
+        <div class="summary-row"><i class="ti ti-map-pin"></i><div><div class="s-label">Recogida</div><div class="s-val" id="sumOrigin">—</div></div></div>
+        <div class="summary-row"><i class="ti ti-flag"></i><div><div class="s-label">Destino</div><div class="s-val" id="sumDest">—</div></div></div>
+        <div class="summary-row" id="sumNoteRow" style="display:none"><i class="ti ti-notes"></i><div><div class="s-label">Nota</div><div class="s-val" id="sumNote">—</div></div></div>
+        <div class="summary-row"><i class="ti ti-key" style="color:#d97706"></i><div><div class="s-label">Código de verificación</div><div class="s-val" id="sumVerifyCode" style="font-family:'Courier New',monospace;color:#d97706;font-size:16px">—</div></div></div>
+        <div class="summary-row"><i class="ti ti-ruler" style="color:#2563eb"></i><div><div class="s-label">Distancia total</div><div class="s-val" id="sumDistance">—</div></div></div>
+      </div>
+      <button class="publish-btn" id="publishBtn" onclick="publishOrder()"><i class="ti ti-send"></i> Publicar pedido</button>
+      <div class="step-nav" style="margin-top:10px">
+        <button class="btn-back" onclick="goStep(1)">← Cambiar ruta</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- P2: MIS PEDIDOS -->
+  <div class="page" id="ordersPage">
+    <div class="page-header">
+      <h2><i class="ti ti-package" style="color:var(--blue)"></i> Mis pedidos</h2>
+    </div>
+    <div id="ordersList" style="padding-bottom:14px"></div>
+  </div>
+
+  <!-- P3: VERIFICAR (ESCÁNER) -->
+  <div class="page" id="scanPage">
+    <div class="page-header">
+      <h2><i class="ti ti-scan" style="color:var(--blue)"></i> Verificar repartidor</h2>
+      <p style="font-size:11px;color:var(--gray-400)">Escanea el QR del repartidor para verificar su identidad</p>
+    </div>
+    <div style="padding:16px">
+      <button class="btn-camera-activate" id="cameraActivateBtn" onclick="startHtml5Scanner()">
+        <i class="ti ti-camera"></i> Activar cámara
+      </button>
+      
+      <div class="scanner-wrap" id="scannerWrap" style="display:none;">
+        <div id="scannerContainer"></div>
+        <div class="scan-frame"><div class="scan-line"></div></div>
+      </div>
+      
+      <div style="display:flex;gap:6px;margin:6px 0;flex-wrap:wrap;">
+        <button class="ov-btn-ghost" onclick="toggleScanCam()" style="flex:1;padding:8px;border-radius:10px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--gray-200);background:var(--gray-100);">
+          <i class="ti ti-camera-rotate"></i> Cambiar
+        </button>
+        <button class="ov-btn-ghost" onclick="stopHtml5Scanner(); document.getElementById('scannerWrap').style.display='none';" style="flex:1;padding:8px;border-radius:10px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--gray-200);background:var(--gray-100);">
+          <i class="ti ti-x"></i> Cerrar cámara
+        </button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px;margin:6px 0;">
+        <div class="manual-search-row">
+          <input type="text" id="manualScanInput" placeholder="Código del repartidor (LLV-XXXX)">
+          <button onclick="manualVerify()"><i class="ti ti-search"></i></button>
+        </div>
+        <div style="font-size:10px;color:var(--gray-400);text-align:left;padding-left:4px">Ej: LLV-7K3M (código del repartidor)</div>
+      </div>
+      <div id="scanResult" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- P4: PERFIL -->
+  <div class="page" id="profilePage">
+    <div class="profile-hero">
+      <div class="profile-avatar-wrap">
+        <div class="profile-avatar" id="profileAvatar" onclick="document.getElementById('avatarInput').click()">
+          <span id="profileAvatarLetter">?</span>
+        </div>
+        <button class="avatar-edit-btn" onclick="document.getElementById('avatarInput').click()">
+          <i class="ti ti-camera"></i>
+        </button>
+      </div>
+      <div class="profile-name" id="profileName">—</div>
+      <div class="profile-email" id="profileEmail">—</div>
+      <div class="profile-code" id="profileCode" onclick="openQROverlay()">
+        <i class="ti ti-qrcode"></i> <span id="profileCodeVal">—</span>
+      </div>
+      <div class="qr-mini-wrap" onclick="openQROverlay()" title="Ver código QR">
+        <div id="qrMini"></div>
+        <div class="qr-mini-label">Mi QR</div>
+      </div>
+    </div>
+    <div class="profile-cards">
+      <div class="pcard">
+        <div class="pcard-title">Datos personales</div>
+        <div class="prow"><i class="ti ti-user prow-icon"></i><div class="prow-content"><div class="prow-label">Nombre completo</div><div class="prow-val" id="pFullName">—</div></div></div>
+        <div class="prow"><i class="ti ti-id-badge prow-icon"></i><div class="prow-content"><div class="prow-label">Carnet de identidad</div><div class="prow-val" id="pCI">—</div></div></div>
+        <div class="prow"><i class="ti ti-phone prow-icon"></i><div class="prow-content"><div class="prow-label">Teléfono</div><div class="prow-val" id="pPhone">—</div></div></div>
+        <div class="prow"><i class="ti ti-mail prow-icon"></i><div class="prow-content"><div class="prow-label">Correo</div><div class="prow-val" id="pEmail">—</div></div></div>
+      </div>
+      <div class="pcard">
+        <div class="pcard-title">Negocio (opcional)</div>
+        <div class="prow"><i class="ti ti-building-store prow-icon"></i><div class="prow-content"><div class="prow-label">Nombre del negocio</div><input type="text" id="pBusiness" placeholder="Ej: Bodega El Vedado"></div></div>
+        <div class="prow" style="align-items:center">
+          <i class="ti ti-photo prow-icon"></i>
+          <div class="prow-content">
+            <div class="prow-label">Logo del negocio</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:3px">
+              <div id="bizLogoPreview" style="width:36px;height:36px;border-radius:8px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--gray-400);overflow:hidden">
+                <i class="ti ti-building-store"></i>
+              </div>
+              <button onclick="document.getElementById('businessLogoInput').click()" style="padding:4px 10px;border-radius:8px;background:var(--gray-100);border:1.5px solid var(--gray-200);font-family:'Nunito',sans-serif;font-size:11px;font-weight:700;cursor:pointer">Cambiar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button class="save-btn" onclick="saveProfile()"><i class="ti ti-device-floppy"></i> Guardar cambios</button>
+      <button class="logout-btn" onclick="doLogout()"><i class="ti ti-logout"></i> Cerrar sesión</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<nav id="bottomNav">
+  <button class="nav-item active" id="nav0" onclick="goPage(0)"><i class="ti ti-map-2"></i><span>Inicio</span></button>
+  <button class="nav-item" id="nav1" onclick="goPage(1)"><i class="ti ti-plus-circle"></i><span>Pedir</span></button>
+  <button class="nav-item" id="nav2" onclick="goPage(2)"><i class="ti ti-package"></i><span>Pedidos</span><div class="nav-badge" id="navBadge"></div></button>
+  <button class="nav-item" id="nav3" onclick="goPage(3)"><i class="ti ti-scan"></i><span>Verificar</span></button>
+  <button class="nav-item" id="nav4" onclick="goPage(4)"><i class="ti ti-user-circle"></i><span>Perfil</span></button>
+</nav>
+
+<!-- OVERLAY QR -->
+<div class="overlay" id="qrOverlay" onclick="if(event.target===this)closeQROverlay()">
+  <div class="overlay-box">
+    <button class="overlay-close" onclick="closeQROverlay()"><i class="ti ti-x"></i></button>
+    <h3>Mi código LLevitrae</h3>
+    <p>Muéstralo al repartidor para identificarte</p>
+    <div id="qrBig"></div>
+    <div class="user-code-big" id="qrBigCode">—</div>
+    <div class="ov-actions">
+      <button class="ov-btn-ghost" onclick="downloadQR()"><i class="ti ti-download"></i> Descargar</button>
+      <button class="ov-btn-main" onclick="shareQR()"><i class="ti ti-share"></i> Compartir</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- File inputs -->
+<input type="file" id="avatarInput" accept="image/*" onchange="handleAvatarUpload(event)">
+<input type="file" id="businessLogoInput" accept="image/*" onchange="handleBizLogoUpload(event)">
+
+<script>
+// ══════════════════════════════════════════════
+// CONFIGURACIÓN
+// ══════════════════════════════════════════════
+const SUPA_URL = 'https://sjeeqxiormfjmbgfwhao.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqZWVxeGlvcm1mam1iZ2Z3aGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMjkxNjksImV4cCI6MjA5NTgwNTE2OX0.z5mv_xMSS1z6yFU3JoyXMw4f6Gd7jr_5A3L8FM_iUMk';
+
+// ══════════════════════════════════════════════
+// ESTADO GLOBAL
+// ══════════════════════════════════════════
+var sb, PROFILE, USER;
+var mainMap, userMarker;
+var riderMarkers = {};
+var myOrderMarkers = {};
+var routeMap, routeControl, originLatLng = null, destLatLng = null;
+var routeMapPicking = 'origin';
+var selectedUrgency = 'Normal';
+var selectedTripType = 'ida';
+var trackMaps = {};
+var qrBigDataUrl = null;
+var qrMiniInstance = null;
+var qrBigInstance = null;
+var routeMapInitialized = false;
+var pendingVerifyCode = null;
+var ordersSub = null;
+var ridersSub = null;
+var trackSubscriptions = {};
+var silentRefreshTimer = null;
+var isSilentUpdating = false;
+var ordersListLoaded = false;
+
+// HTML5-QRCODE
+var html5Scanner = null;
+var isScanning = false;
+var scanCooldown = false;
+var lastScanned = '';
+var camIndex = 0;
+
+const $ = id => document.getElementById(id);
+
+// ══════════════════════════════════════════════
+// FUNCIONES DE UTILIDAD
+// ══════════════════════════════════════════════
+function toast(msg, dur=4000) {
+  const t = $('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timeout);
+  t._timeout = setTimeout(() => t.classList.remove('show'), dur);
+}
+
+function showLoader() { $('loader').classList.remove('hidden'); }
+function hideLoader() { $('loader').classList.add('hidden'); }
+
+function calcDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+function generateVerifyCode() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return 'VER-' + code;
+}
+
+// ══════════════════════════════════════════════
+// NAVEGACIÓN
+// ══════════════════════════════════════════════
+const pages = ['mapPage','orderPage','ordersPage','scanPage','profilePage'];
+function goPage(n) {
+  pages.forEach((id,i) => {
+    $(id).classList.toggle('active', i===n);
+    $('nav'+i).classList.toggle('active', i===n);
+  });
+  if (n===0 && mainMap) {
+    setTimeout(() => mainMap.invalidateSize(), 50);
+  }
+  if (n===1) {
+    if (!routeMapInitialized) {
+      setTimeout(initRouteMap, 150);
+    } else {
+      setTimeout(() => { if (routeMap) routeMap.invalidateSize(); }, 200);
+    }
+  }
+  if (n===2 && !ordersListLoaded) {
+    loadOrdersList();
+  }
+  if (n===3) {
+    stopHtml5Scanner();
+    document.getElementById('scannerWrap').style.display = 'none';
+    const btn = document.getElementById('cameraActivateBtn');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-camera"></i> Activar cámara';
+    isScanning = false;
+  }
+}
+
+function selectTripType(el, val) {
+  document.querySelectorAll('.trip-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  selectedTripType = val;
+}
+
+function selectUrgency(el, val) {
+  document.querySelectorAll('.urg-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  selectedUrgency = val;
+}
+
+// ══════════════════════════════════════════════
+// QR
+// ══════════════════════════════════════════════
+window.openQROverlay = function() {
+  var ov = document.getElementById('qrOverlay');
+  if (ov) ov.classList.add('show');
+};
+
+window.closeQROverlay = function() {
+  var ov = document.getElementById('qrOverlay');
+  if (ov) ov.classList.remove('show');
+};
+
+function generateQRs() {
+  const code = PROFILE.user_code || 'LLV-XXXX';
+  const miniContainer = document.getElementById('qrMini');
+  const bigContainer = document.getElementById('qrBig');
+  
+  if (miniContainer) {
+    miniContainer.innerHTML = '';
+    try {
+      qrMiniInstance = new QRCode(miniContainer, {
+        text: code,
+        width: 50,
+        height: 50,
+        colorDark: '#ffffff',
+        colorLight: 'rgba(255,255,255,0)',
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    } catch(e) {
+      miniContainer.innerHTML = `<span style="color:#fff;font-size:9px;">${code.substring(0,6)}</span>`;
+    }
+  }
+  
+  if (bigContainer) {
+    bigContainer.innerHTML = '';
+    try {
+      qrBigInstance = new QRCode(bigContainer, {
+        text: code,
+        width: 200,
+        height: 200,
+        colorDark: '#111827',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H
+      });
+      setTimeout(() => {
+        const canvas = bigContainer.querySelector('canvas');
+        if (canvas) qrBigDataUrl = canvas.toDataURL('image/png');
+      }, 100);
+    } catch(e) {
+      bigContainer.innerHTML = `<div style="padding:16px;background:#f0f0f0;border-radius:10px;font-size:20px;font-weight:bold;color:#2563eb;">${code}</div>`;
+    }
+  }
+}
+
+window.downloadQR = function() {
+  if (!qrBigDataUrl) {
+    const bigContainer = document.getElementById('qrBig');
+    if (bigContainer) {
+      const canvas = bigContainer.querySelector('canvas');
+      if (canvas) qrBigDataUrl = canvas.toDataURL('image/png');
+    }
+    if (!qrBigDataUrl) { toast('Espera a que el QR se genere'); return; }
+  }
+  const a = document.createElement('a');
+  a.href = qrBigDataUrl; a.download = 'codigo-llevitrae-cliente.png'; a.click();
+};
+
+window.shareQR = async function() {
+  if (!qrBigDataUrl) {
+    const bigContainer = document.getElementById('qrBig');
+    if (bigContainer) {
+      const canvas = bigContainer.querySelector('canvas');
+      if (canvas) qrBigDataUrl = canvas.toDataURL('image/png');
+    }
+    if (!qrBigDataUrl) { toast('Espera a que el QR se genere'); return; }
+  }
+  if (navigator.share && qrBigDataUrl) {
+    try {
+      const blob = await (await fetch(qrBigDataUrl)).blob();
+      const file = new File([blob], 'llevitrae-codigo.png', {type:'image/png'});
+      await navigator.share({title:'Mi código LLevitrae', files:[file]});
+    } catch {}
+  } else {
+    await navigator.clipboard?.writeText(PROFILE.user_code || '');
+    toast('Código copiado');
+  }
+};
+
+// ══════════════════════════════════════════════
+// HTML5-QRCODE SCANNER
+// ══════════════════════════════════════════════
+
+function startHtml5Scanner() {
+  const btn = document.getElementById('cameraActivateBtn');
+  const wrap = document.getElementById('scannerWrap');
+  const container = document.getElementById('scannerContainer');
+  const resEl = document.getElementById('scanResult');
+  
+  resEl.style.display = 'none';
+  resEl.className = 'scan-result';
+  resEl.innerHTML = '';
+  wrap.style.display = 'block';
+  
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader"></i> Iniciando cámara...';
+  
+  if (typeof Html5Qrcode === 'undefined') {
+    btn.innerHTML = '<i class="ti ti-camera"></i> Activar cámara';
+    btn.disabled = false;
+    toast('❌ Error: Librería de escáner no cargada');
+    return;
+  }
+  
+  if (html5Scanner) {
+    stopHtml5Scanner();
+  }
+  
+  const config = {
+    fps: 15,
+    qrbox: { width: 200, height: 200 },
+    aspectRatio: 1.0,
+    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+  };
+  
+  html5Scanner = new Html5Qrcode("scannerContainer");
+  
+  html5Scanner.start(
+    { facingMode: "environment" },
+    config,
+    onScanSuccess,
+    onScanError
+  )
+  .then(() => {
+    isScanning = true;
+    btn.innerHTML = '<i class="ti ti-camera"></i> Cámara trasera activa';
+    btn.disabled = false;
+    toast('📷 Cámara trasera activa. Apunta al código QR.');
+  })
+  .catch(err => {
+    console.warn('Cámara trasera falló, intentando con cualquier cámara:', err);
+    
+    html5Scanner.start(
+      { facingMode: "environment" },
+      config,
+      onScanSuccess,
+      onScanError
+    )
+    .then(() => {
+      isScanning = true;
+      btn.innerHTML = '<i class="ti ti-camera"></i> Cámara activa';
+      btn.disabled = false;
+      toast('📷 Cámara activa. Apunta al código QR.');
+    })
+    .catch(err2 => {
+      console.error('Error al iniciar escáner:', err2);
+      btn.innerHTML = '<i class="ti ti-camera"></i> Reintentar';
+      btn.disabled = false;
+      
+      let msg = 'No se pudo iniciar la cámara';
+      if (err2.message && err2.message.includes('permission')) {
+        msg = '🔒 Permiso denegado. Habilita la cámara en los ajustes.';
+      } else if (err2.message && err2.message.includes('camera')) {
+        msg = '📷 No se encontró ninguna cámara disponible.';
+      }
+      
+      resEl.style.display = 'block';
+      resEl.className = 'scan-result err';
+      resEl.innerHTML = `
+        <div class="scan-result-name">❌ ${msg}</div>
+        <div class="scan-result-row"><i class="ti ti-info-circle"></i> ${err2.message || ''}</div>
+        <button onclick="startHtml5Scanner()" style="margin-top:8px;padding:6px 14px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'Nunito',sans-serif;font-weight:700;cursor:pointer">
+          <i class="ti ti-refresh"></i> Reintentar
+        </button>`;
+    });
+  });
+}
+
+function stopHtml5Scanner() {
+  if (html5Scanner) {
+    try {
+      html5Scanner.stop().then(() => {
+        html5Scanner.clear();
+        html5Scanner = null;
+        isScanning = false;
+        document.getElementById('scannerWrap').style.display = 'none';
+        const btn = document.getElementById('cameraActivateBtn');
+        btn.innerHTML = '<i class="ti ti-camera"></i> Activar cámara';
+        btn.disabled = false;
+      }).catch(() => {
+        html5Scanner = null;
+        isScanning = false;
+      });
+    } catch(e) {
+      html5Scanner = null;
+      isScanning = false;
+    }
+  } else {
+    document.getElementById('scannerWrap').style.display = 'none';
+  }
+}
+
+function toggleScanCam() {
+  camIndex++;
+  const facingMode = (camIndex % 2 === 0) ? "environment" : "user";
+  const label = (camIndex % 2 === 0) ? "trasera" : "delantera";
+  
+  stopHtml5Scanner();
+  setTimeout(() => {
+    startHtml5ScannerWithFacing(facingMode, label);
+  }, 500);
+}
+
+function startHtml5ScannerWithFacing(facingMode, label) {
+  const btn = document.getElementById('cameraActivateBtn');
+  const wrap = document.getElementById('scannerWrap');
+  const container = document.getElementById('scannerContainer');
+  const resEl = document.getElementById('scanResult');
+  
+  resEl.style.display = 'none';
+  resEl.className = 'scan-result';
+  resEl.innerHTML = '';
+  wrap.style.display = 'block';
+  
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader"></i> Iniciando cámara...';
+  
+  if (typeof Html5Qrcode === 'undefined') {
+    btn.innerHTML = '<i class="ti ti-camera"></i> Activar cámara';
+    btn.disabled = false;
+    toast('❌ Error: Librería de escáner no cargada');
+    return;
+  }
+  
+  if (html5Scanner) {
+    stopHtml5Scanner();
+  }
+  
+  const config = {
+    fps: 15,
+    qrbox: { width: 200, height: 200 },
+    aspectRatio: 1.0,
+    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+  };
+  
+  html5Scanner = new Html5Qrcode("scannerContainer");
+  
+  html5Scanner.start(
+    { facingMode: facingMode },
+    config,
+    onScanSuccess,
+    onScanError
+  )
+  .then(() => {
+    isScanning = true;
+    btn.innerHTML = `<i class="ti ti-camera"></i> Cámara ${label} activa`;
+    btn.disabled = false;
+    toast(`📷 Cámara ${label} activa. Apunta al código QR.`);
+  })
+  .catch(err => {
+    console.error('Error al iniciar escáner:', err);
+    btn.innerHTML = '<i class="ti ti-camera"></i> Reintentar';
+    btn.disabled = false;
+    
+    let msg = `No se pudo iniciar la cámara ${label}`;
+    if (err.message && err.message.includes('permission')) {
+      msg = '🔒 Permiso denegado. Habilita la cámara en los ajustes.';
+    } else if (err.message && err.message.includes('camera')) {
+      msg = '📷 No se encontró la cámara seleccionada.';
+    }
+    
+    resEl.style.display = 'block';
+    resEl.className = 'scan-result err';
+    resEl.innerHTML = `
+      <div class="scan-result-name">❌ ${msg}</div>
+      <div class="scan-result-row"><i class="ti ti-info-circle"></i> ${err.message || ''}</div>
+      <button onclick="startHtml5Scanner()" style="margin-top:8px;padding:6px 14px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'Nunito',sans-serif;font-weight:700;cursor:pointer">
+        <i class="ti ti-refresh"></i> Reintentar
+      </button>`;
+  });
+}
+
+function onScanSuccess(decodedText, decodedResult) {
+  if (scanCooldown || decodedText === lastScanned) return;
+  
+  scanCooldown = true;
+  lastScanned = decodedText;
+  setTimeout(() => { scanCooldown = false; }, 3000);
+  
+  if (navigator.vibrate) navigator.vibrate(100);
+  handleScanResult(decodedText);
+}
+
+function onScanError(err) {}
+
+// ══════════════════════════════════════════════
+// MANEJAR RESULTADO DEL ESCÁNER
+// ══════════════════════════════════════════════
+async function handleScanResult(raw) {
+  if (!raw) return;
+  
+  if (!raw.startsWith('LLV-')) {
+    const resEl = document.getElementById('scanResult');
+    resEl.style.display = 'block';
+    resEl.className = 'scan-result err';
+    resEl.innerHTML = `
+      <div class="scan-result-name">⚠️ Código no válido</div>
+      <div style="font-size:12px;font-weight:600;color:var(--gray-600);word-break:break-all">${raw}</div>
+      <div style="font-size:11px;color:#d97706;margin-top:4px">Debe empezar con <strong>LLV-</strong></div>
+    `;
+    return;
+  }
+
+  const resEl = document.getElementById('scanResult');
+  
+  try {
+    const { data: prof } = await sb.from('profiles')
+      .select('full_name, ci, phone, role, user_code, email')
+      .eq('user_code', raw)
+      .single();
+
+    if (!prof) {
+      resEl.style.display = 'block';
+      resEl.className = 'scan-result err';
+      resEl.innerHTML = `
+        <div class="scan-result-name">❌ Código no encontrado</div>
+        <div class="scan-result-row"><i class="ti ti-info-circle"></i> ${raw}</div>
+      `;
+      return;
+    }
+
+    const roleLabel = prof.role === 'client' ? 'Cliente' : 'Repartidor';
+    const badgeClass = prof.role === 'client' ? 'badge-client' : 'badge-rider';
+    const roleIcon = prof.role === 'client' ? 'ti-user' : 'ti-bike';
+
+    resEl.style.display = 'block';
+    resEl.className = 'scan-result ok';
+    resEl.innerHTML = `
+      <div class="scan-result-name">✅ ${prof.full_name || 'Usuario'}</div>
+      <span class="scan-result-badge ${badgeClass}"><i class="ti ${roleIcon}"></i> ${roleLabel}</span>
+      <div class="scan-result-row" style="margin-top:6px"><i class="ti ti-id-badge"></i> CI: ${prof.ci || '—'}</div>
+      <div class="scan-result-row"><i class="ti ti-phone"></i> ${prof.phone || '—'}</div>
+      <div class="scan-result-row"><i class="ti ti-qrcode"></i> ${prof.user_code}</div>
+    `;
+    
+  } catch(e) {
+    console.error('Error al procesar QR:', e);
+    resEl.style.display = 'block';
+    resEl.className = 'scan-result err';
+    resEl.innerHTML = `
+      <div class="scan-result-name">❌ Error al procesar</div>
+      <div class="scan-result-row"><i class="ti ti-info-circle"></i> ${e.message || ''}</div>
+    `;
+  }
+}
+
+// ══════════════════════════════════════════════
+// BÚSQUEDA MANUAL
+// ══════════════════════════════════════════════
+window.manualVerify = async function() {
+  const input = document.getElementById('manualScanInput');
+  const value = input.value.trim().toUpperCase();
+  if (!value) { toast('Escribe un código de usuario'); return; }
+
+  const resEl = document.getElementById('scanResult');
+  resEl.style.display = 'block';
+
+  if (!value.startsWith('LLV-') || value.length < 8) {
+    resEl.className = 'scan-result err';
+    resEl.innerHTML = `<div class="scan-result-name">❌ Formato inválido</div><div class="scan-result-row"><i class="ti ti-info-circle"></i> Debe ser LLV-XXXX</div>`;
+    return;
+  }
+
+  const { data: prof } = await sb.from('profiles')
+    .select('full_name, ci, phone, role, user_code, email')
+    .eq('user_code', value)
+    .single();
+
+  if (!prof) {
+    resEl.className = 'scan-result err';
+    resEl.innerHTML = `<div class="scan-result-name">❌ Código no encontrado</div><div class="scan-result-row"><i class="ti ti-info-circle"></i> ${value}</div>`;
+    return;
+  }
+
+  const roleLabel = prof.role === 'client' ? 'Cliente' : 'Repartidor';
+  const badgeClass = prof.role === 'client' ? 'badge-client' : 'badge-rider';
+  const roleIcon = prof.role === 'client' ? 'ti-user' : 'ti-bike';
+
+  resEl.className = 'scan-result ok';
+  resEl.innerHTML = `
+    <div class="scan-result-name">✅ ${prof.full_name || 'Usuario'}</div>
+    <span class="scan-result-badge ${badgeClass}"><i class="ti ${roleIcon}"></i> ${roleLabel}</span>
+    <div class="scan-result-row" style="margin-top:6px"><i class="ti ti-id-badge"></i> CI: ${prof.ci || '—'}</div>
+    <div class="scan-result-row"><i class="ti ti-phone"></i> ${prof.phone || '—'}</div>
+    <div class="scan-result-row"><i class="ti ti-qrcode"></i> ${prof.user_code}</div>
+  `;
+};
+
+// ══════════════════════════════════════════════
+// LOGOUT
+// ══════════════════════════════════════════════
+async function doLogout() {
+  if (!confirm('¿Cerrar sesión?')) return;
+  try {
+    await sb.auth.signOut();
+    window.location.href = 'index.html?logout=true';
+  } catch(e) {
+    window.location.href = 'index.html?logout=true';
+  }
+}
+
+// ══════════════════════════════════════════════
+// PERFIL
+// ══════════════════════════════════════════════
+async function saveProfile() {
+  const business = $('pBusiness').value.trim();
+  const { error } = await sb.from('profiles').update({ business_name: business || null }).eq('id', USER.id);
+  if (error) { toast('Error al guardar'); return; }
+  PROFILE.business_name = business;
+  toast('✅ Perfil guardado');
+}
+
+async function handleAvatarUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  showLoader();
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const path = `${USER.id}/avatar.${ext}`;
+  const { error } = await sb.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type });
+  if (error) { hideLoader(); toast('Error subiendo imagen'); return; }
+  const { data } = sb.storage.from('avatars').getPublicUrl(path);
+  const url = data.publicUrl + '?t=' + Date.now();
+  await sb.from('profiles').update({ avatar_url: url }).eq('id', USER.id);
+  PROFILE.avatar_url = url;
+  setAvatarImg(url);
+  hideLoader();
+  toast('✅ Foto actualizada');
+}
+
+async function handleBizLogoUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  showLoader();
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const path = `${USER.id}/logo.${ext}`;
+  const { error } = await sb.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type });
+  if (error) { hideLoader(); toast('Error subiendo logo'); return; }
+  const { data } = sb.storage.from('avatars').getPublicUrl(path);
+  const url = data.publicUrl + '?t=' + Date.now();
+  await sb.from('profiles').update({ business_logo_url: url }).eq('id', USER.id);
+  PROFILE.business_logo_url = url;
+  $('bizLogoPreview').innerHTML = `<img src="${url}" style="width:36px;height:36px;object-fit:cover;border-radius:8px">`;
+  hideLoader();
+  toast('✅ Logo actualizado');
+}
+
+function setAvatarImg(url) {
+  $('profileAvatar').innerHTML = `<img src="${url}" alt="avatar">`;
+  $('tbAvatar').innerHTML = `<img src="${url}" alt="avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+window.addEventListener('load', async () => {
+  sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = 'index.html?logout=true'; return; }
+  USER = session.user;
+
+  const { data: prof, error } = await sb.from('profiles').select('*').eq('id', USER.id).single();
+  if (error || !prof) { window.location.href = 'index.html?logout=true'; return; }
+  PROFILE = prof;
+
+  if (PROFILE.role !== 'client') { window.location.href = 'index.html?logout=true'; return; }
+
+  fillUI();
+  initMainMap();
+  generateQRs();
+  
+  // Iniciar actualización silenciosa cada 2 segundos
+  startSilentRefresh();
+
+  hideLoader();
+});
+
+function fillUI() {
+  const name = PROFILE.full_name || 'Usuario';
+  const letter = name[0].toUpperCase();
+
+  $('tbName').textContent = name.split(' ')[0];
+  $('tbAvatarLetter').textContent = letter;
+  $('profileName').textContent = name;
+  $('profileEmail').textContent = PROFILE.email || USER?.email || '';
+  $('profileAvatarLetter').textContent = letter;
+  const uc = PROFILE.user_code || '—';
+  $('profileCodeVal').textContent = uc;
+  $('qrBigCode').textContent = uc;
+  $('tbCode').textContent = uc;
+  $('pFullName').textContent = name;
+  $('pCI').textContent = PROFILE.ci || '—';
+  $('pPhone').textContent = PROFILE.phone || '—';
+  $('pEmail').textContent = PROFILE.email || USER?.email || '';
+  if (PROFILE.business_name) $('pBusiness').value = PROFILE.business_name;
+
+  if (PROFILE.avatar_url) setAvatarImg(PROFILE.avatar_url);
+  if (PROFILE.business_logo_url) {
+    $('bizLogoPreview').innerHTML = `<img src="${PROFILE.business_logo_url}" style="width:36px;height:36px;object-fit:cover;border-radius:8px">`;
+  }
+}
+
+// ══════════════════════════════════════════════
+// MAPA PRINCIPAL
+// ══════════════════════════════════════════════
+function initMainMap() {
+  mainMap = L.map('map', { zoomControl: false });
+  setTimeout(() => mainMap.invalidateSize(), 300);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OSM', maxZoom: 19
+  }).addTo(mainMap);
+  L.control.zoom({ position: 'bottomright' }).addTo(mainMap);
+
+  mainMap.setView([23.135, -82.358], 12);
+
+  refreshAllData();
+  setupRealtimeSubscriptions();
+
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(pos => {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      const latlng = L.latLng(lat, lng);
+      sb.from('profiles').update({ lat, lng }).eq('id', USER.id).then(() => {});
+      if (!userMarker) {
+        userMarker = L.circleMarker(latlng, {
+          radius: 9, fillColor: '#2563eb', color: '#fff',
+          weight: 3, fillOpacity: 1
+        }).addTo(mainMap).bindPopup('<b>Tú</b>');
+        mainMap.setView(latlng, 12);
+      } else {
+        userMarker.setLatLng(latlng);
+      }
+    }, (err) => {
+      console.warn('Geolocalización no disponible:', err.message);
+    }, { enableHighAccuracy: true, maximumAge: 5000 });
+  }
+}
+
+// ══════════════════════════════════════════════
+// ACTUALIZACIÓN SILENCIOSA - CADA 2 SEGUNDOS
+// ══════════════════════════════════════════════
+function startSilentRefresh() {
+  if (silentRefreshTimer) {
+    clearInterval(silentRefreshTimer);
+  }
+  
+  silentRefreshTimer = setInterval(() => {
+    if (!isSilentUpdating && mainMap) {
+      isSilentUpdating = true;
+      silentRefreshAll().finally(() => {
+        isSilentUpdating = false;
+      });
+    }
+  }, 2000);
+}
+
+async function silentRefreshAll() {
+  try {
+    await silentUpdateRiders();
+    await silentUpdateOrders();
+    await silentUpdateTrackMaps();
+    
+    // Si la página de pedidos está visible, actualizar la lista
+    if (document.getElementById('ordersPage').classList.contains('active')) {
+      await silentUpdateOrdersList();
+    }
+  } catch (e) {
+    // Silenciar errores
+  }
+}
+
+// ══════════════════════════════════════════════
+// ACTUALIZACIÓN SILENCIOSA DE REPARTIDORES
+// ══════════════════════════════════════════════
+async function silentUpdateRiders() {
+  if (!mainMap) return;
+  
+  try {
+    const { data: activeOrders } = await sb.from('orders')
+      .select('rider_id')
+      .eq('status', 'active')
+      .not('rider_id', 'is', null);
+
+    const busyRiderIds = new Set();
+    if (activeOrders) {
+      activeOrders.forEach(o => { if (o.rider_id) busyRiderIds.add(o.rider_id); });
+    }
+
+    const { data: riders } = await sb.from('riders')
+      .select('id, lat, lng, vehicle, is_active, profiles(full_name)')
+      .not('lat', 'is', null)
+      .eq('is_active', true);
+
+    const ridersData = riders || [];
+    const availableRiders = ridersData.filter(r => r.is_active === true && !busyRiderIds.has(r.id));
+
+    const currentCount = parseInt($('ridersN').textContent) || 0;
+    if (currentCount !== availableRiders.length) {
+      $('ridersN').textContent = availableRiders.length;
+    }
+
+    const currentRiderIds = new Set(Object.keys(riderMarkers));
+    const newRiderIds = new Set(availableRiders.map(r => r.id));
+
+    currentRiderIds.forEach(id => {
+      if (!newRiderIds.has(id) && riderMarkers[id]?.marker) {
+        riderMarkers[id].marker.remove();
+        delete riderMarkers[id];
+      }
+    });
+
+    availableRiders.forEach(r => {
+      if (riderMarkers[r.id]) {
+        const marker = riderMarkers[r.id].marker;
+        if (marker) {
+          const newPos = L.latLng(r.lat, r.lng);
+          const currentPos = marker.getLatLng();
+          if (currentPos.distanceTo(newPos) > 10) {
+            marker.setLatLng(newPos);
+          }
+          if (!mainMap.hasLayer(marker)) mainMap.addLayer(marker);
+        }
+      } else {
+        addRiderToMap(r);
+      }
+    });
+  } catch (e) {}
+}
+
+function addRiderToMap(rider) {
+  const name = rider.profiles?.full_name || 'Repartidor';
+  const ll = L.latLng(rider.lat, rider.lng);
+
+  const icon = L.divIcon({
+    html: `<div class="rider-marker">🚴</div>`,
+    iconSize: [40, 40], iconAnchor: [20, 20], className: ''
+  });
+
+  const popupContent = `
+    <div style="font-family:'Nunito',sans-serif;font-weight:700;font-size:13px;min-width:180px">
+      <div style="font-size:15px;margin-bottom:2px">🚴 ${name}</div>
+      <div style="font-size:11px;color:#666;font-weight:600">${rider.vehicle || 'Bicicleta'}</div>
+      <div style="font-size:11px;color:#16a34a;font-weight:700;margin-top:3px">🟢 Disponible</div>
+    </div>
+  `;
+
+  const marker = L.marker(ll, { icon }).addTo(mainMap).bindPopup(popupContent);
+  riderMarkers[rider.id] = { marker, riderData: rider };
+}
+
+// ══════════════════════════════════════════════
+// ACTUALIZACIÓN SILENCIOSA DE PEDIDOS EN EL MAPA
+// ══════════════════════════════════════════════
+async function silentUpdateOrders() {
+  if (!mainMap) return;
+  
+  try {
+    const { data: orders } = await sb.from('orders')
+      .select('*')
+      .eq('client_id', USER.id)
+      .in('status', ['pending', 'active', 'cancelled', 'done', 'verified'])
+      .not('origin_lat', 'is', null)
+      .not('origin_lng', 'is', null);
+
+    const ordersData = orders || [];
+    
+    // Actualizar badge
+    const activeCount = ordersData.filter(o => o.status === 'active').length;
+    updateOrderBadge(activeCount);
+
+    // ELIMINAR PEDIDOS CANCELADOS O COMPLETADOS DEL MAPA
+    const activeOrderIds = new Set(ordersData
+      .filter(o => o.status !== 'cancelled' && o.status !== 'done' && o.status !== 'verified')
+      .map(o => o.id));
+
+    Object.keys(myOrderMarkers).forEach(id => {
+      if (!activeOrderIds.has(id)) {
+        if (myOrderMarkers[id]) {
+          myOrderMarkers[id].remove();
+          delete myOrderMarkers[id];
+        }
+        // También limpiar mapas de rastreo asociados
+        destroyTrackMap(id);
+      }
+    });
+
+    // Agregar o actualizar pedidos activos/pendientes
+    ordersData.forEach(o => {
+      if (o.status === 'cancelled' || o.status === 'done' || o.status === 'verified') return;
+      
+      if (myOrderMarkers[o.id]) {
+        myOrderMarkers[o.id].setLatLng([o.origin_lat, o.origin_lng]);
+        // Actualizar ícono si cambió el estado
+        const isActive = o.status === 'active';
+        const icon = L.divIcon({
+          html: `<div class="package-marker ${isActive ? 'active' : ''}">📦</div>`,
+          iconSize: [40, 40], iconAnchor: [20, 20], className: ''
+        });
+        myOrderMarkers[o.id].setIcon(icon);
+
+        // FIX: el popup se creaba una sola vez con bindPopup() y nunca se
+        // volvía a actualizar. Si el pedido pasaba de pending a active
+        // (o viceversa), el ícono cambiaba de color pero el texto del popup
+        // ("Pendiente"/"En tránsito", "Rastreo activo", etc.) se quedaba
+        // congelado con el estado viejo. Hay que regenerar el contenido cada
+        // vez y aplicarlo con setPopupContent.
+        const popupContentUpdate = `
+          <div style="font-family:'Nunito',sans-serif;font-weight:700;font-size:13px;min-width:180px">
+            <div style="margin-bottom:4px;font-size:15px;display:flex;align-items:center;gap:6px">
+              📦 ${o.description || 'Mi pedido'}
+            </div>
+            <div style="font-size:11px;color:#666;font-weight:600">${o.urgency || 'Normal'} · ${o.trip_type === 'ida' ? 'Solo ida' : 'Ida y vuelta'}</div>
+            <div style="font-size:11px;color:${isActive ? '#16a34a' : '#f59e0b'};font-weight:700;margin-top:3px">
+              ${isActive ? '🚴 En tránsito' : '⏳ Pendiente'}
+            </div>
+            ${o.distance_km ? `<div style="font-size:10px;color:#2563eb;margin-top:3px">📏 ${o.distance_km.toFixed(1)} km</div>` : ''}
+            <div style="font-size:10px;color:#2563eb;margin-top:4px;border-top:1px solid #eee;padding-top:6px">
+              Código: ${o.code || '—'}
+            </div>
+            ${isActive ? `<div style="font-size:10px;color:#16a34a;margin-top:3px">🟢 Rastreo activo</div>` : ''}
+          </div>
+        `;
+        myOrderMarkers[o.id].setPopupContent(popupContentUpdate);
+        return;
+      }
+
+      const isActive = o.status === 'active';
+      const icon = L.divIcon({
+        html: `<div class="package-marker ${isActive ? 'active' : ''}">📦</div>`,
+        iconSize: [40, 40], iconAnchor: [20, 20], className: ''
+      });
+
+      const popupContent = `
+        <div style="font-family:'Nunito',sans-serif;font-weight:700;font-size:13px;min-width:180px">
+          <div style="margin-bottom:4px;font-size:15px;display:flex;align-items:center;gap:6px">
+            📦 ${o.description || 'Mi pedido'}
+          </div>
+          <div style="font-size:11px;color:#666;font-weight:600">${o.urgency || 'Normal'} · ${o.trip_type === 'ida' ? 'Solo ida' : 'Ida y vuelta'}</div>
+          <div style="font-size:11px;color:${isActive ? '#16a34a' : '#f59e0b'};font-weight:700;margin-top:3px">
+            ${isActive ? '🚴 En tránsito' : '⏳ Pendiente'}
+          </div>
+          ${o.distance_km ? `<div style="font-size:10px;color:#2563eb;margin-top:3px">📏 ${o.distance_km.toFixed(1)} km</div>` : ''}
+          <div style="font-size:10px;color:#2563eb;margin-top:4px;border-top:1px solid #eee;padding-top:6px">
+            Código: ${o.code || '—'}
+          </div>
+          ${o.status === 'active' ? `<div style="font-size:10px;color:#16a34a;margin-top:3px">🟢 Rastreo activo</div>` : ''}
+        </div>
+      `;
+
+      const marker = L.marker([o.origin_lat, o.origin_lng], { icon })
+        .addTo(mainMap)
+        .bindPopup(popupContent);
+
+      myOrderMarkers[o.id] = marker;
+    });
+
+  } catch (e) {}
+}
+
+function updateOrderBadge(n) {
+  const b = $('navBadge');
+  b.textContent = n;
+  b.style.display = n > 0 ? 'flex' : 'none';
+}
+
+// ══════════════════════════════════════════════
+// ACTUALIZACIÓN SILENCIOSA DE MAPAS DE RASTREO
+// ══════════════════════════════════════════════
+async function silentUpdateTrackMaps() {
+  for (const orderId in trackMaps) {
+    const trackData = trackMaps[orderId];
+    if (trackData && trackData.riderId) {
+      try {
+        const { data: rider } = await sb.from('riders')
+          .select('lat, lng')
+          .eq('id', trackData.riderId)
+          .single();
+        
+        if (rider && rider.lat && rider.lng && trackData.riderMarker) {
+          const newPos = L.latLng(rider.lat, rider.lng);
+          trackData.riderMarker.setLatLng(newPos);
+          
+          const currentBounds = trackData.map.getBounds();
+          if (!currentBounds.contains(newPos)) {
+            const allBounds = [
+              trackData.origin,
+              trackData.dest,
+              [rider.lat, rider.lng]
+            ];
+            trackData.map.fitBounds(allBounds, { padding: [30,30] });
+          }
+        }
+      } catch (e) {}
+    }
+  }
+}
+
+// ══════════════════════════════════════════════
+// SUSCRIPCIONES EN TIEMPO REAL
+// ══════════════════════════════════════════════
+function setupRealtimeSubscriptions() {
+  if (ordersSub) sb.removeChannel(ordersSub);
+  ordersSub = sb.channel('client-all-orders')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `client_id=eq.${USER.id}` }, (payload) => {
+      // Actualizar en silencio
+      silentRefreshAll();
+      // Si la lista está visible, recargarla
+      if (document.getElementById('ordersPage').classList.contains('active')) {
+        loadOrdersList();
+      }
+      // Mostrar notificación si el pedido fue cancelado o completado
+      if (payload.eventType === 'UPDATE') {
+        if (payload.new && payload.new.status === 'cancelled') {
+          toast('❌ El repartidor canceló tu pedido');
+        } else if (payload.new && payload.new.status === 'done') {
+          toast('✅ ¡Tu pedido fue entregado!');
+        } else if (payload.new && payload.new.status === 'active') {
+          toast('🚴 ¡Un repartidor aceptó tu pedido!');
+        }
+      }
+    })
+    .subscribe();
+
+  if (ridersSub) sb.removeChannel(ridersSub);
+  ridersSub = sb.channel('riders-all')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'riders' }, () => {
+      silentRefreshAll();
+    })
+    .subscribe();
+}
+
+function refreshAllData() {
+  silentRefreshAll();
+}
+
+function centerOnMe() {
+  if (userMarker) mainMap.setView(userMarker.getLatLng(), 14);
+}
+
+// ══════════════════════════════════════════════
+// LISTA DE PEDIDOS - COMPLETA
+// ══════════════════════════════════════════════
+function destroyTrackMap(orderId) {
+  const t = trackMaps[orderId];
+  if (!t) return;
+  try { if (t.map) t.map.remove(); } catch(e) {}
+  try { if (t.channel) sb.removeChannel(t.channel); } catch(e) {}
+  delete trackSubscriptions[orderId];
+  delete trackMaps[orderId];
+}
+
+function destroyAllTrackMaps() {
+  Object.keys(trackMaps).forEach(id => destroyTrackMap(id));
+}
+
+// FIX: loadOrdersListSeq protege únicamente las llamadas a loadOrdersList()
+// entre sí (para el caso de dos eventos realtime seguidos, ej. rechazar y
+// volver a coger rápido). silentUpdateOrdersList() NO incrementa este
+// contador -- solo lo LEE para saber si una recarga completa lo superó
+// mientras esperaba. Antes ambas funciones compartían el mismo contador y
+// silentUpdateOrdersList (que corre cada 2 segundos) invalidaba por error
+// el setTimeout que crea el mapa dentro de loadOrdersList, dejándolo
+// permanentemente en blanco aunque el div ya estuviera en el DOM.
+let loadOrdersListSeq = 0;
+
+async function loadOrdersList() {
+  const el = $('ordersList');
+  ordersListLoaded = true;
+
+  // Si el repartidor rechaza y vuelve a coger el pedido muy rápido, llegan
+  // dos eventos realtime seguidos y cada uno dispara loadOrdersList() sin
+  // esperar al anterior. Este token asegura que solo se aplique el
+  // resultado de la llamada más reciente entre ellas.
+  const myRequestId = ++loadOrdersListSeq;
+
+  // IMPORTANTE: antes de destruir el HTML hay que destruir los mapas Leaflet
+  // que viven dentro de esas tarjetas, si no, quedan mapas "huérfanos" en
+  // trackMaps apuntando a un div que ya no existe, y el mapa se queda en blanco
+  // la próxima vez que se intente mostrar (ej: al cancelar y coger otro pedido).
+  destroyAllTrackMaps();
+
+  el.innerHTML = `<div style="padding:40px;text-align:center"><div class="spinner" style="margin:0 auto 12px"></div><p style="color:var(--gray-400);font-size:13px">Cargando...</p></div>`;
+
+  const { data: orders, error } = await sb.from('orders')
+    .select('*, riders(id,vehicle,profile_id,lat,lng,profiles(full_name))')
+    .eq('client_id', USER.id)
+    .order('created_at', { ascending: false });
+
+  // Si mientras esperábamos esta consulta ya se disparó otra llamada más
+  // reciente a loadOrdersList(), esta respuesta está obsoleta: no tocar el DOM.
+  if (myRequestId !== loadOrdersListSeq) return;
+
+  if (error || !orders?.length) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-icon"><i class="ti ti-package-off"></i></div>
+      <div class="empty-title">Sin pedidos</div>
+      <div class="empty-sub">Crea tu primer pedido y un repartidor lo tomará</div>
+      <button class="empty-btn" onclick="goPage(1)"><i class="ti ti-plus"></i> Crear pedido</button>
+    </div>`;
+    return;
+  }
+
+  // Ordenar: activos primero, luego pendientes, luego otros
+  const sorted = [...orders].sort((a, b) => {
+    const order = { active: 0, pending: 1, cancelled: 2, done: 3, verified: 4 };
+    return (order[a.status] || 99) - (order[b.status] || 99);
+  });
+
+  el.innerHTML = sorted.map(o => renderOrderCard(o)).join('');
+
+  // Inicializar mapas de rastreo para pedidos activos
+  setTimeout(() => {
+    if (myRequestId !== loadOrdersListSeq) return; // otra loadOrdersList() más nueva ya tomó el control
+    sorted.filter(o => o.status === 'active' && o.riders).forEach(o => {
+      initTrackMap(o);
+    });
+  }, 400);
+}
+
+// ══════════════════════════════════════════════
+// ACTUALIZACIÓN SILENCIOSA DE LA LISTA DE PEDIDOS
+// ══════════════════════════════════════════════
+async function silentUpdateOrdersList() {
+  const el = $('ordersList');
+  if (!el || el.children.length === 0 || el.querySelector('.spinner')) {
+    return;
+  }
+
+  // Solo LEEMOS loadOrdersListSeq (nunca lo incrementamos): si una llamada
+  // a loadOrdersList() completa se disparó mientras esperábamos, dejamos que
+  // gane esa recarga completa y no tocamos el DOM con datos potencialmente
+  // obsoletos ni interferimos con su propio setTimeout de inicialización de mapas.
+  const loadSeqAtStart = loadOrdersListSeq;
+
+  try {
+    const { data: orders, error } = await sb.from('orders')
+      .select('*, riders(id,vehicle,profile_id,lat,lng,profiles(full_name))')
+      .eq('client_id', USER.id)
+      .order('created_at', { ascending: false });
+
+    if (loadOrdersListSeq !== loadSeqAtStart) return; // loadOrdersList() ya se encargó, no pisarlo
+
+    if (error || !orders?.length) {
+      loadOrdersList();
+      return;
+    }
+
+    // Verificar si hubo cambios en los estados
+    const currentCards = el.querySelectorAll('.order-card');
+    const currentIds = new Set();
+    currentCards.forEach(card => {
+      const id = card.id.replace('order-card-', '');
+      currentIds.add(id);
+    });
+
+    const newIds = new Set(orders.map(o => o.id));
+
+    // Si cambió la cantidad de pedidos, recargar completo
+    if (currentIds.size !== newIds.size || 
+        ![...currentIds].every(id => newIds.has(id)) ||
+        ![...newIds].every(id => currentIds.has(id))) {
+      loadOrdersList();
+      return;
+    }
+
+    // Actualizar cada tarjeta individualmente
+    orders.forEach(o => {
+      const card = document.getElementById('order-card-' + o.id);
+      if (card) {
+        const statusMap = {
+          pending: { class: 'pill-pending', label: '⏳ Pendiente', icon: 'ti-clock' },
+          active: { class: 'pill-active', label: '🚴 En tránsito', icon: 'ti-bike' },
+          cancelled: { class: 'pill-cancelled', label: '❌ Cancelado', icon: 'ti-x' },
+          done: { class: 'pill-done', label: '✅ Entregado', icon: 'ti-check' },
+          verified: { class: 'pill-verified', label: '🔐 Verificado', icon: 'ti-lock' }
+        };
+        const status = statusMap[o.status] || statusMap.pending;
+        
+        const statusEl = card.querySelector('.pill');
+        if (statusEl) {
+          statusEl.className = `pill ${status.class}`;
+          statusEl.innerHTML = `<i class="ti ${status.icon}"></i> ${status.label}`;
+        }
+
+        // Si está cancelado, completado, verificado, O si volvió a 'pending'
+        // (el repartidor canceló/liberó el pedido), hay que limpiar el mapa
+        // de rastreo viejo. Si no se hace esto, cuando el pedido vuelva a
+        // activarse (mismo u otro repartidor lo coge), el código de abajo
+        // ve que "ya existe" un trackMap y nunca lo reinicia -> mapa en blanco
+        // con datos del repartidor anterior.
+        if (o.status === 'cancelled' || o.status === 'done' || o.status === 'verified') {
+          card.classList.add('cancelled');
+          if (myOrderMarkers[o.id]) {
+            myOrderMarkers[o.id].remove();
+            delete myOrderMarkers[o.id];
+          }
+          destroyTrackMap(o.id);
+        } else {
+          card.classList.remove('cancelled');
+          if (o.status === 'pending') {
+            destroyTrackMap(o.id);
+            // Redibujar la tarjeta completa: si no lo hacemos, el mapa y la
+            // info del repartidor anterior se quedan visibles pegados en el
+            // DOM aunque el pedido ya no esté activo.
+            const parent = card.parentNode;
+            const newCard = document.createElement('div');
+            newCard.innerHTML = renderOrderCard(o);
+            parent.replaceChild(newCard.firstElementChild, card);
+            return;
+          }
+        }
+
+        // Si el pedido está activo y tiene repartidor, iniciar (o reiniciar)
+        // el mapa de rastreo si: no hay mapa todavía, o el mapa existente
+        // corresponde a un repartidor distinto al actual (reasignación).
+        const needsMapInit = o.status === 'active' && o.riders && (
+          !trackMaps[o.id] || trackMaps[o.id].riderId !== o.riders.id
+        );
+        if (needsMapInit) {
+          if (trackMaps[o.id]) destroyTrackMap(o.id);
+          // Recargar la tarjeta para agregar el mapa
+          const parent = card.parentNode;
+          const newCard = document.createElement('div');
+          newCard.innerHTML = renderOrderCard(o);
+          parent.replaceChild(newCard.firstElementChild, card);
+          setTimeout(() => initTrackMap(o), 300);
+        }
+      }
+    });
+  } catch (e) {
+    loadOrdersList();
+  }
+}
+
+function renderOrderCard(o) {
+  const statusMap = {
+    pending: { class: 'pill-pending', label: '⏳ Pendiente', icon: 'ti-clock' },
+    active: { class: 'pill-active', label: '🚴 En tránsito', icon: 'ti-bike' },
+    cancelled: { class: 'pill-cancelled', label: '❌ Cancelado', icon: 'ti-x' },
+    done: { class: 'pill-done', label: '✅ Entregado', icon: 'ti-check' },
+    verified: { class: 'pill-verified', label: '🔐 Verificado', icon: 'ti-lock' }
+  };
+  
+  const status = statusMap[o.status] || statusMap.pending;
+  const dateStr = new Date(o.created_at).toLocaleString('es-CU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+  const riderName = o.riders?.profiles?.full_name || null;
+  const tripLabel = o.trip_type === 'ida' ? '🚀 Solo ida' : '🔄 Ida y vuelta';
+  const isCancelled = o.status === 'cancelled' || o.status === 'done' || o.status === 'verified';
+  const isActive = o.status === 'active';
+
+  let verifyCodesHtml = '';
+  if (!isCancelled && o.status !== 'done' && o.status !== 'verified') {
+    if (o.trip_type === 'vuelta') {
+      verifyCodesHtml = `
+        <div class="verify-code-box" style="flex-wrap:wrap">
+          <div><div class="label"><i class="ti ti-arrow-right"></i> Código IDA (recogida)</div><div class="code" style="font-size:14px">${o.verify_code_ida || '—'}</div></div>
+          <div><span class="status ${o.verify_ida_used ? 'used' : 'pending'}">${o.verify_ida_used ? '✅ Usado' : '⏳ Pendiente'}</span></div>
+        </div>
+        <div class="verify-code-box" style="flex-wrap:wrap;border-color:#86efac">
+          <div><div class="label"><i class="ti ti-arrow-left"></i> Código VUELTA (entrega)</div><div class="code" style="font-size:14px;color:#16a34a">${o.verify_code_vuelta || '—'}</div></div>
+          <div><span class="status ${o.verify_vuelta_used ? 'used' : 'pending'}">${o.verify_vuelta_used ? '✅ Usado' : '⏳ Pendiente'}</span></div>
+        </div>
+      `;
+    } else {
+      verifyCodesHtml = `
+        <div class="verify-code-box">
+          <div><div class="label"><i class="ti ti-key"></i> Código de verificación</div><div class="code">${o.verify_code_ida || o.verify_code || 'No generado'}</div></div>
+          <div><span class="status ${o.verify_ida_used ? 'used' : 'pending'}">${o.verify_ida_used ? '✅ Usado' : '⏳ Pendiente'}</span></div>
+        </div>
+      `;
+    }
+  }
+
+  let trackMapHtml = '';
+  if (isActive && o.riders && !isCancelled) {
+    trackMapHtml = `
+      <div class="track-map-wrap"><div class="track-map" id="tmap_${o.id}"></div></div>
+      ${riderName ? `
+        <div class="rider-info">
+          <div class="rider-avatar">${riderName[0]}</div>
+          <div>
+            <div class="rider-name">${riderName}</div>
+            <div class="rider-vehicle">${o.riders?.vehicle || 'Bicicleta'}</div>
+            <div style="font-size:10px;color:#16a34a;font-weight:700">🟢 En vivo - Rastreo en tiempo real</div>
+          </div>
+        </div>` : ''}
+    `;
+  }
+
+  const cancelBtn = (!isCancelled && (o.status === 'pending' || o.status === 'active')) ? `
+    <button class="btn-cancel-order" onclick="cancelOrderClient('${o.id}')">
+      <i class="ti ti-x"></i> Cancelar pedido
+    </button>
+  ` : '';
+
+  const cardClass = isCancelled ? 'order-card cancelled' : 'order-card';
+
+  return `
+  <div class="${cardClass}" id="order-card-${o.id}">
+    <div class="order-card-head">
+      <div><div class="order-code">${o.code}</div><div class="order-date">${dateStr}</div></div>
+      <span class="pill ${status.class}"><i class="ti ${status.icon}"></i> ${status.label}</span>
+    </div>
+    <div class="order-card-body">
+      <div class="order-detail"><i class="ti ti-package"></i>${o.description}</div>
+      <div class="order-detail"><i class="ti ti-weight"></i>${o.weight_kg || '—'} kg · ${o.urgency}</div>
+      <div class="order-detail"><i class="ti ti-arrows-left-right"></i>${tripLabel}</div>
+      ${o.distance_km ? `<div class="order-detail"><i class="ti ti-ruler"></i>📏 ${o.distance_km.toFixed(1)} km</div>` : ''}
+      <div class="order-detail"><i class="ti ti-map-pin"></i>${o.origin_address}</div>
+      <div class="order-detail"><i class="ti ti-flag"></i>${o.dest_address}</div>
+      
+      ${verifyCodesHtml}
+      
+      ${trackMapHtml}
+      
+      ${o.status === 'pending' && !isCancelled ? `
+        <div style="margin-top:8px;font-size:11px;color:#854d0e;background:#fefce8;padding:8px 12px;border-radius:8px;border:1px solid #fcd34d">
+          <i class="ti ti-info-circle"></i> Esperando que un repartidor tome tu pedido
+        </div>
+      ` : ''}
+      
+      ${cancelBtn}
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════
+// CANCELAR PEDIDO (CLIENTE)
+// ══════════════════════════════════════════════
+async function cancelOrderClient(orderId) {
+  if (!confirm('¿Seguro que quieres cancelar este pedido?')) return;
+
+  showLoader();
+
+  try {
+    const { data: order, error: fetchError } = await sb.from('orders')
+      .select('status, client_id')
+      .eq('id', orderId)
+      .eq('client_id', USER.id)
+      .single();
+
+    if (fetchError || !order) {
+      hideLoader();
+      toast('Pedido no encontrado');
+      return;
+    }
+
+    if (order.status === 'cancelled') {
+      hideLoader();
+      toast('Este pedido ya está cancelado');
+      return;
+    }
+
+    if (order.status === 'done' || order.status === 'verified') {
+      hideLoader();
+      toast('No puedes cancelar un pedido ya completado');
+      return;
+    }
+
+    const { error: updateError } = await sb.from('orders')
+      .update({ status: 'cancelled' })
+      .eq('id', orderId)
+      .eq('client_id', USER.id);
+
+    if (updateError) {
+      console.error('❌ Error al cancelar pedido:', updateError);
+      hideLoader();
+      toast('Error al cancelar el pedido: ' + updateError.message);
+      return;
+    }
+
+    // ELIMINAR DEL MAPA PRINCIPAL
+    if (myOrderMarkers[orderId]) {
+      myOrderMarkers[orderId].remove();
+      delete myOrderMarkers[orderId];
+    }
+
+    // ELIMINAR MAPA DE RASTREO
+    destroyTrackMap(orderId);
+
+    hideLoader();
+    toast('❌ Pedido cancelado');
+    
+    // Actualizar todo
+    silentRefreshAll();
+    loadOrdersList();
+
+  } catch (e) {
+    console.error('Error en cancelación:', e);
+    hideLoader();
+    toast('Error al cancelar el pedido');
+  }
+}
+
+// ══════════════════════════════════════════════
+// MAPA DE RASTREO - PERSISTENTE Y REUTILIZABLE
+// ══════════════════════════════════════════════
+function initTrackMap(o) {
+  const el = document.getElementById('tmap_' + o.id);
+  if (!el) return;
+  
+  // Si ya existe un mapa para este pedido, verificar que siga "vivo" de verdad:
+  // que su contenedor real siga siendo el div que está ahora en el DOM.
+  // Si no (mapa huérfano de una tarjeta destruida por cancelar/recargar/coger
+  // otro pedido), lo destruimos y lo reconstruimos desde cero en vez de
+  // quedarnos con un mapa fantasma que nunca se ve.
+  if (trackMaps[o.id]) {
+    const existing = trackMaps[o.id];
+    const container = existing.map && existing.map.getContainer ? existing.map.getContainer() : null;
+    const isOrphan = !container || container !== el || !document.body.contains(container);
+
+    if (isOrphan) {
+      destroyTrackMap(o.id);
+      // sigue el flujo de abajo para crear el mapa nuevo
+    } else {
+      // Actualizar posición del rider
+      if (o.riders && o.riders.lat && o.riders.lng && existing.riderMarker) {
+        existing.riderMarker.setLatLng([o.riders.lat, o.riders.lng]);
+      }
+      existing.map.invalidateSize();
+      return;
+    }
+  }
+  
+  // Verificar que el repartidor tenga ubicación
+  if (!o.riders || !o.riders.lat || !o.riders.lng) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:#666;font-size:12px">El repartidor aún no comparte su ubicación</div>';
+    return;
+  }
+  
+  // Crear el mapa
+  const m = L.map(el, { 
+    zoomControl: false, 
+    dragging: true, 
+    scrollWheelZoom: false,
+    attributionControl: false
+  });
+  
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '', 
+    maxZoom: 19
+  }).addTo(m);
+
+  // Marcador de origen
+  L.marker([o.origin_lat, o.origin_lng], { 
+    icon: L.divIcon({
+      html: `<div style="background:#2563eb;width:24px;height:24px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:12px">📦</div>`,
+      iconSize:[24,24], iconAnchor:[12,12]
+    })
+  }).addTo(m);
+  
+  // Marcador de destino
+  L.marker([o.dest_lat, o.dest_lng], { 
+    icon: L.divIcon({
+      html: `<div style="background:#dc2626;width:24px;height:24px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:12px">🏁</div>`,
+      iconSize:[24,24], iconAnchor:[12,12]
+    })
+  }).addTo(m);
+
+  // Marcador del repartidor
+  const riderPos = L.latLng(o.riders.lat, o.riders.lng);
+  const riderMarker = L.marker(riderPos, { 
+    icon: L.divIcon({
+      html: `<div style="background:#16a34a;width:32px;height:32px;border-radius:50%;border:3px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.3);font-size:16px">🚴</div>`,
+      iconSize:[32,32], iconAnchor:[16,16]
+    })
+  }).addTo(m);
+
+  // Ajustar vista
+  const bounds = [
+    [o.origin_lat, o.origin_lng], 
+    [o.dest_lat, o.dest_lng], 
+    [o.riders.lat, o.riders.lng]
+  ];
+  m.fitBounds(bounds, { padding: [30,30] });
+
+  // FIX: si el contenedor no tenía su tamaño final resuelto por el navegador
+  // en el momento exacto en que se creó el mapa (muy común justo después de
+  // insertar el div en el DOM), Leaflet cachea un tamaño incorrecto (0x0) y
+  // el mapa se queda en blanco para siempre, aunque el div tenga su altura
+  // CSS correcta. invalidateSize() fuerza a Leaflet a recalcular el tamaño
+  // real y volver a pintar los tiles.
+  setTimeout(() => {
+    m.invalidateSize();
+    m.fitBounds(bounds, { padding: [30,30] });
+  }, 100);
+  setTimeout(() => m.invalidateSize(), 500);
+
+  // Guardar referencia
+  trackMaps[o.id] = { 
+    map: m, 
+    riderMarker: riderMarker, 
+    orderId: o.id,
+    riderId: o.riders.id,
+    origin: [o.origin_lat, o.origin_lng],
+    dest: [o.dest_lat, o.dest_lng],
+    channel: null
+  };
+
+  // Crear subscripción en tiempo real para este repartidor
+  const trackChannel = sb.channel('track_'+o.id)
+    .on('postgres_changes', { 
+      event: 'UPDATE', 
+      schema: 'public', 
+      table: 'riders',
+      filter: `id=eq.${o.riders.id}` 
+    }, payload => {
+      const r = payload.new;
+      if (!r.lat || !r.lng) return;
+      
+      if (trackMaps[o.id]?.riderMarker) {
+        const newPos = L.latLng(r.lat, r.lng);
+        trackMaps[o.id].riderMarker.setLatLng(newPos);
+        
+        const currentBounds = m.getBounds();
+        if (!currentBounds.contains(newPos)) {
+          const allBounds = [
+            trackMaps[o.id].origin,
+            trackMaps[o.id].dest,
+            [r.lat, r.lng]
+          ];
+          m.fitBounds(allBounds, { padding: [30,30] });
+        }
+      }
+    })
+    .subscribe();
+
+  trackMaps[o.id].channel = trackChannel;
+  trackSubscriptions[o.id] = trackChannel;
+}
+
+// ══════════════════════════════════════════════
+// NUEVO PEDIDO — STEPPER
+// ══════════════════════════════════════════════
+let currentStep = 0;
+
+function goStep(n) {
+  if (n===1) {
+    const desc = $('oDesc').value.trim();
+    if (!desc) { toast('Describe qué se va a llevar'); return; }
+  }
+  if (n===2) {
+    if (!originLatLng || !destLatLng) { toast('Marca recogida y destino en el mapa'); return; }
+    fillSummary();
+  }
+  currentStep = n;
+  [0,1,2].forEach(i => {
+    $('sp'+i).classList.toggle('active', i===n);
+    $('stp'+i).classList.remove('active','done');
+    if (i < n) $('stp'+i).classList.add('done');
+    if (i === n) $('stp'+i).classList.add('active');
+  });
+  if (n===1 && !routeMapInitialized) {
+    setTimeout(initRouteMap, 100);
+  } else if (n===1 && routeMap) {
+    setTimeout(() => routeMap.invalidateSize(), 150);
+  }
+}
+
+// ══════════════════════════════════════════════
+// MAPA DE RUTA (Paso 2)
+// ══════════════════════════════════════════════
+function initRouteMap() {
+  if (routeMapInitialized && routeMap) { routeMap.invalidateSize(); return; }
+  
+  const container = document.getElementById('routeMap');
+  if (!container) return;
+  container.innerHTML = '';
+  
+  const center = userMarker ? userMarker.getLatLng() : L.latLng(23.135, -82.358);
+  
+  try {
+    routeMap = L.map('routeMap', { zoomControl: true, attributionControl: true });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM', maxZoom: 19 }).addTo(routeMap);
+    routeMap.setView(center, 15);
+    L.control.zoom({ position: 'topright' }).addTo(routeMap);
+
+    routeMapPicking = 'origin';
+    routeMapInitialized = true;
+
+    var geocoder = L.Control.geocoder({
+      defaultMarkGeocode: false,
+      position: 'topleft',
+      placeholder: 'Buscar lugar...',
+      errorMessage: 'No se encontró el lugar'
+    }).addTo(routeMap);
+
+    geocoder.on('markgeocode', function(e) {
+      var latlng = e.geocode.center;
+      var name = e.geocode.name;
+      if (routeMapPicking === 'origin') {
+        originLatLng = latlng;
+        $('originText').textContent = name;
+        addRoutePin(latlng, 'origin');
+        routeMapPicking = 'dest';
+        toast('📍 Recogida marcada. Ahora busca o toca el destino');
+      } else {
+        destLatLng = latlng;
+        $('destText').textContent = name;
+        addRoutePin(latlng, 'dest');
+        $('step2Next').disabled = false;
+        drawRoute();
+        routeMapPicking = 'origin';
+      }
+    });
+
+    routeMap.on('click', async e => {
+      const addr = await reverseGeocode(e.latlng);
+      if (routeMapPicking === 'origin') {
+        originLatLng = e.latlng;
+        $('originText').textContent = addr;
+        addRoutePin(e.latlng, 'origin');
+        routeMapPicking = 'dest';
+        toast('Ahora toca el destino o busca un lugar');
+      } else {
+        destLatLng = e.latlng;
+        $('destText').textContent = addr;
+        addRoutePin(e.latlng, 'dest');
+        $('step2Next').disabled = false;
+        drawRoute();
+        routeMapPicking = 'origin';
+      }
+    });
+    
+    setTimeout(() => { if (routeMap) routeMap.invalidateSize(); }, 300);
+    
+  } catch(e) {
+    console.error('Error inicializando mapa de ruta:', e);
+    container.innerHTML = '<div style="padding:20px;text-align:center;color:#666;">Error al cargar el mapa. Recarga la página.</div>';
+  }
+}
+
+var originPin, destPin;
+function addRoutePin(latlng, type) {
+  const color = type === 'origin' ? '#2563eb' : '#16a34a';
+  const emoji = type === 'origin' ? '📦' : '🏁';
+  const icon = L.divIcon({
+    html: `<div style="background:${color};width:34px;height:34px;border-radius:50% 50% 50% 0;border:3px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25);transform:rotate(-45deg);font-size:14px"><span style="transform:rotate(45deg)">${emoji}</span></div>`,
+    iconSize: [34,34], iconAnchor: [17,34], className: ''
+  });
+  if (type === 'origin') { if (originPin) originPin.remove(); originPin = L.marker(latlng,{icon}).addTo(routeMap); }
+  else { if (destPin) destPin.remove(); destPin = L.marker(latlng,{icon}).addTo(routeMap); }
+}
+
+function drawRoute() {
+  if (routeControl) routeMap.removeControl(routeControl);
+  if (!originLatLng || !destLatLng) return;
+  routeControl = L.Routing.control({
+    waypoints: [originLatLng, destLatLng],
+    routeWhileDragging: false,
+    addWaypoints: false,
+    draggableWaypoints: false,
+    show: false,
+    lineOptions: { styles: [{ color: '#2563eb', weight: 4, opacity: .7 }] },
+    createMarker: () => null
+  }).addTo(routeMap);
+  routeMap.fitBounds([originLatLng, destLatLng], { padding: [40,40] });
+  orderDistance = calcDistance(originLatLng.lat, originLatLng.lng, destLatLng.lat, destLatLng.lng);
+}
+
+async function reverseGeocode(latlng) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latlng.lat}&lon=${latlng.lng}&format=json`);
+    const d = await r.json();
+    return d.display_name?.split(',').slice(0,3).join(', ') || `${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`;
+  } catch { return `${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`; }
+}
+
+// ══════════════════════════════════════════════
+// PASO 3 — RESUMEN
+// ══════════════════════════════════════════════
+function fillSummary() {
+  if (selectedTripType === 'vuelta') {
+    pendingVerifyCode = generateVerifyCode() + ' (IDA) + ' + generateVerifyCode() + ' (VUELTA)';
+  } else {
+    pendingVerifyCode = generateVerifyCode();
+  }
+  
+  $('sumDesc').textContent = $('oDesc').value.trim();
+  $('sumWeight').textContent = $('weightSlider').value + ' kg';
+  $('sumUrgency').textContent = selectedUrgency;
+  $('sumTripType').textContent = selectedTripType === 'ida' ? '🚀 Solo ida' : '🔄 Ida y vuelta (2 códigos)';
+  $('sumOrigin').textContent = $('originText').textContent;
+  $('sumDest').textContent = $('destText').textContent;
+  $('sumVerifyCode').textContent = pendingVerifyCode;
+  
+  if (originLatLng && destLatLng) {
+    const dist = calcDistance(originLatLng.lat, originLatLng.lng, destLatLng.lat, destLatLng.lng);
+    $('sumDistance').textContent = dist.toFixed(2) + ' km';
+  } else {
+    $('sumDistance').textContent = '—';
+  }
+  
+  const note = $('oNote').value.trim();
+  if (note) { $('sumNote').textContent = note; $('sumNoteRow').style.display='flex'; }
+  else { $('sumNoteRow').style.display='none'; }
+}
+
+// ══════════════════════════════════════════════
+// PUBLICAR PEDIDO
+// ══════════════════════════════════════════════
+async function publishOrder() {
+  $('publishBtn').disabled = true;
+  $('publishBtn').textContent = 'Publicando...';
+
+  const code = 'PED-' + Date.now().toString(36).toUpperCase();
+  let distanceKm = 0;
+  if (originLatLng && destLatLng) {
+    distanceKm = calcDistance(originLatLng.lat, originLatLng.lng, destLatLng.lat, destLatLng.lng);
+  }
+  
+  const orderData = {
+    code,
+    client_id: USER.id,
+    description: $('oDesc').value.trim(),
+    weight_kg: parseInt($('weightSlider').value),
+    urgency: selectedUrgency,
+    trip_type: selectedTripType,
+    notes: $('oNote').value.trim() || null,
+    origin_address: $('originText').textContent,
+    origin_lat: originLatLng.lat,
+    origin_lng: originLatLng.lng,
+    dest_address: $('destText').textContent,
+    dest_lat: destLatLng.lat,
+    dest_lng: destLatLng.lng,
+    status: 'pending',
+    distance_km: distanceKm,
+    verify_code_ida: selectedTripType === 'vuelta' ? generateVerifyCode() : generateVerifyCode(),
+    verify_code_vuelta: selectedTripType === 'vuelta' ? generateVerifyCode() : null,
+    verify_ida_used: false,
+    verify_vuelta_used: false,
+    verify_code: generateVerifyCode(),
+    verify_used: false
+  };
+  
+  const { error } = await sb.from('orders').insert(orderData);
+
+  $('publishBtn').disabled = false;
+  $('publishBtn').innerHTML = '<i class="ti ti-send"></i> Publicar pedido';
+
+  if (error) { toast('Error al publicar: ' + error.message); return; }
+
+  toast(`✅ Pedido publicado. Distancia: ${distanceKm.toFixed(2)} km`);
+  
+  $('oDesc').value = '';
+  $('oNote').value = '';
+  $('weightSlider').value = 5; $('weightVal').textContent = '5';
+  document.querySelectorAll('.urg-chip').forEach((c,i)=>c.classList.toggle('active',i===0));
+  document.querySelectorAll('.trip-chip').forEach((c,i)=>c.classList.toggle('active',i===0));
+  selectedUrgency = 'Normal';
+  selectedTripType = 'ida';
+  originLatLng = null; destLatLng = null;
+  pendingVerifyCode = null;
+  orderDistance = 0;
+  if (originPin) { originPin.remove(); originPin=null; }
+  if (destPin) { destPin.remove(); destPin=null; }
+  if (routeControl) { routeMap.removeControl(routeControl); routeControl=null; }
+  $('originText').textContent = 'Toca el mapa o busca un lugar';
+  $('destText').textContent = 'Toca el mapa o busca un lugar';
+  $('step2Next').disabled = true;
+
+  goStep(0);
+  goPage(2);
+  
+  setTimeout(() => { refreshAllData(); }, 500);
+}
+
+// ══════════════════════════════════════════════
+// SERVICE WORKER
+// ══════════════════════════════════════════════
+if ("serviceWorker" in navigator && window.location.protocol === 'https:') {
+  navigator.serviceWorker.register("./sw.js");
+}
+</script>
+</body>
+</html>
