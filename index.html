@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1e3a8a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="LLevitrae">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="./assets/llevitrae.png">
+  <title>LLevitrae</title>
+  <link rel="stylesheet" href="estilos.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    /* ─── RESET GLOBAL ─── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; margin: 0; padding: 0; }
+
+    /* ─── OVERLAY ─── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6); z-index: 300;
+      align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.show { display: flex; }
+
+    /* ─── MODAL ─── */
+    .modal {
+      background: #fff; border-radius: 20px;
+      width: 100%; max-width: 420px;
+      max-height: calc(100vh - 32px);
+      overflow-y: auto; overflow-x: hidden;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+      position: relative;
+      scrollbar-width: thin;
+      scrollbar-color: #ddd transparent;
+    }
+    .modal::-webkit-scrollbar { width: 4px; }
+    .modal::-webkit-scrollbar-thumb { background: #ddd; border-radius: 4px; }
+
+    /* ─── MODAL HEADER ─── */
+    .modal-header {
+      position: sticky; top: 0; z-index: 10;
+      background: #fff; padding: 20px 20px 0;
+      border-radius: 20px 20px 0 0;
+    }
+
+    .close-btn {
+      position: absolute; top: 14px; right: 14px;
+      background: #f5f5f5; border: none; color: #777;
+      width: 30px; height: 30px; border-radius: 50%;
+      cursor: pointer; display: flex; align-items: center;
+      justify-content: center; font-size: 14px;
+      transition: background .2s, color .2s;
+    }
+    .close-btn:hover { background: #fee2e2; color: #dc2626; }
+
+    .modal-logo {
+      text-align: center; padding: 0 0 10px;
+    }
+    .modal-logo img {
+      height: 44px; width: auto; object-fit: contain;
+      display: inline-block;
+    }
+
+    .modal-title {
+      font-size: 1.2rem; font-weight: 800; color: #111827;
+      text-align: center; margin: 0 0 6px;
+    }
+
+    .role-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 12px; border-radius: 20px;
+      font-size: 11px; font-weight: 800;
+      margin: 0 auto 10px;
+      position: relative; left: 50%; transform: translateX(-50%);
+      width: fit-content;
+    }
+    .role-badge.client { background: #dbeafe; color: #1d4ed8; }
+    .role-badge.rider  { background: #dcfce7; color: #15803d; }
+
+    /* ─── TABS ─── */
+    .tab-row {
+      display: flex; gap: 4px;
+      background: #f3f4f6; border-radius: 10px; padding: 4px;
+      margin-bottom: 0;
+    }
+    .tab-btn {
+      flex: 1; padding: 8px 4px; border: none; background: transparent;
+      color: #6b7280; cursor: pointer; border-radius: 7px;
+      font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700;
+      transition: background .2s, color .2s;
+    }
+    .tab-btn.active { background: #2563eb; color: #fff; }
+
+    /* ─── BODY DEL MODAL ─── */
+    .modal-body { padding: 16px 20px 24px; }
+
+    /* ─── CAMPOS ─── */
+    .field { margin-bottom: 12px; }
+    .field:last-child { margin-bottom: 0; }
+
+    .field label {
+      display: block; font-size: 11px; font-weight: 800;
+      color: #374151; margin-bottom: 5px; letter-spacing: .3px;
+    }
+    .field label .req { color: #ef4444; margin-left: 2px; }
+
+    .field input,
+    .field select {
+      display: block; width: 100%;
+      padding: 11px 14px; font-size: 14px; font-weight: 600;
+      font-family: 'Nunito', sans-serif; color: #111827;
+      background: #f9fafb; border: 1.5px solid #e5e7eb;
+      border-radius: 10px; outline: none;
+      transition: border-color .2s, background .2s;
+      margin: 0; box-sizing: border-box;
+      -webkit-appearance: none; appearance: none;
+    }
+    .field input::placeholder { color: #9ca3af; font-weight: 500; }
+    .field input:focus,
+    .field select:focus {
+      border-color: #2563eb; background: #fff;
+      box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+    }
+    .field input.err { border-color: #ef4444; }
+
+    /* ─── GRID 2 COL ─── */
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .grid2 .full { grid-column: 1 / -1; }
+
+    /* ─── DIVISOR ─── */
+    .divider {
+      font-size: 10px; font-weight: 800; color: #9ca3af;
+      text-transform: uppercase; letter-spacing: 1px;
+      margin: 14px 0 10px; padding-top: 12px;
+      border-top: 1px solid #f3f4f6;
+    }
+
+    /* ─── BOTONES ─── */
+    .btn-main {
+      display: block; width: 100%; padding: 12px;
+      background: linear-gradient(135deg, #2563eb, #1e40af);
+      color: #fff; border: none; border-radius: 11px;
+      font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 800;
+      cursor: pointer; transition: transform .15s, box-shadow .15s;
+      margin-top: 16px;
+    }
+    .btn-main:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(37,99,235,.35);
+    }
+    .btn-main:active:not(:disabled) { transform: translateY(0); }
+    .btn-main:disabled { opacity: .55; cursor: not-allowed; }
+
+    .btn-ghost {
+      display: block; width: 100%; padding: 11px;
+      background: #f3f4f6; color: #374151;
+      border: 1.5px solid #e5e7eb; border-radius: 11px;
+      font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700;
+      cursor: pointer; transition: background .2s;
+      margin-top: 8px;
+    }
+    .btn-ghost:hover { background: #e5e7eb; }
+
+    /* ─── ERROR ─── */
+    .err-box {
+      display: none; background: #fef2f2; border: 1px solid #fecaca;
+      border-radius: 9px; padding: 10px 14px; margin-top: 14px;
+      font-size: 13px; font-weight: 600; color: #b91c1c;
+      text-align: center;
+    }
+
+    /* ─── OTP ─── */
+    .otp-icon {
+      width: 54px; height: 54px; border-radius: 50%;
+      background: #dbeafe; display: flex; align-items: center;
+      justify-content: center; margin: 4px auto 12px; font-size: 24px; color: #2563eb;
+    }
+    #otpCode {
+      font-size: 1.6rem !important; letter-spacing: .35em !important;
+      text-align: center !important; font-weight: 800 !important;
+    }
+
+    /* ─── QR PANEL ─── */
+    .qr-wrap { text-align: center; padding: 8px 0 4px; }
+    .qr-wrap canvas {
+      border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,.1);
+      margin: 14px auto; display: block;
+    }
+    .user-code {
+      font-size: 1.7rem; font-weight: 800; letter-spacing: 4px;
+      color: #111827; margin: 6px 0 2px;
+    }
+    .user-code-sub { font-size: 12px; color: #6b7280; margin-bottom: 16px; }
+    .share-row { display: flex; gap: 10px; }
+    .share-row .btn-ghost { margin-top: 0; flex: 1; }
+
+    /* ─── PRIVACIDAD: ENLACE ─── */
+    .privacy-link {
+      display: inline-block;
+      margin-top: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #2563eb;
+      text-decoration: underline;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: 'Nunito', sans-serif;
+      padding: 0;
+    }
+    .privacy-link:hover {
+      color: #1e40af;
+    }
+
+    /* ─── PRIVACIDAD: MODAL ─── */
+    .privacy-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .privacy-overlay.show {
+      display: flex;
+    }
+    .privacy-modal {
+      background: #fff;
+      border-radius: 20px;
+      max-width: 480px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 28px 24px 24px;
+      position: relative;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+    }
+    .privacy-modal h2 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #111827;
+      margin: 0 0 8px;
+      text-align: center;
+    }
+    .privacy-modal .close-privacy {
+      position: sticky;
+      top: 0;
+      float: right;
+      background: #f3f4f6;
+      border: none;
+      color: #6b7280;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .2s, color .2s;
+    }
+    .privacy-modal .close-privacy:hover {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+    .privacy-modal p {
+      font-size: 13px;
+      line-height: 1.6;
+      color: #374151;
+      margin: 8px 0;
+    }
+    .privacy-modal ul {
+      font-size: 13px;
+      line-height: 1.6;
+      color: #374151;
+      padding-left: 20px;
+      margin: 8px 0;
+    }
+    .privacy-modal strong {
+      color: #111827;
+    }
+
+    /* ─── BOTÓN DE ACEPTAR DENTRO DEL MODAL DE PRIVACIDAD ─── */
+    .privacy-accept-btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      margin-top: 20px;
+      background: linear-gradient(135deg, #2563eb, #1e40af);
+      color: #fff;
+      border: none;
+      border-radius: 11px;
+      font-family: 'Nunito', sans-serif;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .privacy-accept-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(37,99,235,.35);
+    }
+    .privacy-accept-btn:active {
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+<script>
+  // Safari fix: calcula el alto real del viewport y lo mete como --vh
+  function setVh() {
+    var vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', vh + 'px');
+  }
+  setVh();
+  window.addEventListener('resize', setVh);
+</script>
+
+<!-- ── SPLASH ── -->
+<div id="splash">
+  <div class="canvas-container">
+    <div class="background-rectangle"></div>
+    <div class="rectangle-llevo"></div>
+    <button class="rectangle rectangle-envio btn" onclick="showAuth('client')"></button>
+    <button class="rectangle rectangle-logo  btn" onclick="showAuth('rider')"></button>
+  </div>
+</div>
+
+<!-- ── MODAL AUTH ── -->
+<div class="modal-overlay" id="authModal">
+  <div class="modal" id="authModalBox">
+
+    <!-- HEADER STICKY -->
+    <div class="modal-header">
+      <button class="close-btn" onclick="closeAuth()"><i class="ti ti-x"></i></button>
+
+      <div class="modal-logo">
+        <img src="./assets/llevitrae.png" alt="LLevitrae"
+             onerror="this.style.display='none'">
+      </div>
+
+      <div class="modal-title" id="authTitle">Iniciar sesión</div>
+
+      <div class="role-badge client" id="authRoleBadge">
+        <i class="ti ti-user"></i>
+        <span id="authRoleLabel">Cliente</span>
+      </div>
+
+      <div class="tab-row" id="authTabs">
+        <button class="tab-btn active" id="tabLogin"
+                onclick="switchTab('login')">Iniciar sesión</button>
+        <button class="tab-btn" id="tabReg"
+                onclick="switchTab('register')">Registrarse</button>
+      </div>
+    </div><!-- /modal-header -->
+
+    <!-- BODY -->
+    <div class="modal-body">
+
+      <!-- ── LOGIN ── -->
+      <div id="panelLogin">
+        <div class="field">
+          <label>Correo electrónico <span class="req">*</span></label>
+          <input type="email" id="loginEmail" placeholder="tu@correo.com"
+                 autocomplete="email">
+        </div>
+        <div class="field">
+          <label>Contraseña <span class="req">*</span></label>
+          <input type="password" id="loginPass" placeholder="••••••••"
+                 autocomplete="current-password">
+        </div>
+        <button class="btn-main" id="loginBtn" onclick="doLogin()">
+          <i class="ti ti-login"></i> Entrar
+        </button>
+      </div>
+
+      <!-- ── REGISTRO ── -->
+      <div id="panelReg" style="display:none">
+        <div class="grid2">
+          <div class="field">
+            <label>Nombre <span class="req">*</span></label>
+            <input type="text" id="rName" placeholder="Nombre"
+                   autocomplete="given-name">
+          </div>
+          <div class="field">
+            <label>Apellidos <span class="req">*</span></label>
+            <input type="text" id="rLast" placeholder="Apellidos"
+                   autocomplete="family-name">
+          </div>
+          <div class="field full">
+            <label>Carnet de identidad <span class="req">*</span></label>
+            <input type="text" id="rCI" placeholder="11 dígitos" maxlength="11"
+                   inputmode="numeric"
+                   oninput="this.value=this.value.replace(/\D/g,'')">
+          </div>
+          <div class="field full">
+            <label>Correo electrónico <span class="req">*</span></label>
+            <input type="email" id="rEmail" placeholder="tu@correo.com"
+                   autocomplete="email">
+          </div>
+          <div class="field">
+            <label>Teléfono <span class="req">*</span></label>
+            <input type="tel" id="rPhone" placeholder="+53 5..."
+                   autocomplete="tel">
+          </div>
+          <div class="field">
+            <label>Contraseña <span class="req">*</span></label>
+            <input type="password" id="rPass" placeholder="min. 6 car."
+                   autocomplete="new-password">
+          </div>
+        </div>
+
+        <!-- Solo repartidor -->
+        <div id="riderExtras" style="display:none">
+          <div class="divider">Datos del repartidor</div>
+          <div class="field">
+            <label>Vehículo <span class="req">*</span></label>
+            <select id="rVehicle">
+              <option value="">Seleccionar...</option>
+              <option>Bicicleta</option>
+              <option>Patinete eléctrico</option>
+              <option>Moto</option>
+              <option>A pie</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Zona de trabajo <span class="req">*</span></label>
+            <input type="text" id="rZone" placeholder="Ej: Centro, Vedado...">
+          </div>
+        </div>
+
+        <!-- 🔐 ENLACE PARA ABRIR EL AVISO DE PRIVACIDAD -->
+        <div style="text-align:center; margin-top: 12px;">
+          <button class="privacy-link" onclick="showPrivacyPolicy()">
+            📋 Leer el Aviso de Privacidad
+          </button>
+        </div>
+
+        <button class="btn-main" id="regBtn" onclick="doRegister()">
+          <i class="ti ti-user-plus"></i> Crear cuenta
+        </button>
+      </div>
+
+      <!-- ── OTP (ya no se usa, solo placeholder) ── -->
+      <div id="panelOtp" style="display:none"></div>
+
+      <!-- ── QR (primer ingreso) ── -->
+      <div id="panelQR" style="display:none">
+        <div class="qr-wrap">
+          <p style="font-size:1rem;font-weight:800;margin:0 0 4px">
+            🎉 ¡Bienvenid<span id="qrGenero">o</span>!
+          </p>
+          <p style="color:#6b7280;font-size:.82rem;margin:0 0 6px">
+            Tu código de usuario único
+          </p>
+          <div class="user-code" id="qrCode">—</div>
+          <div class="user-code-sub">Muéstralo para que te identifiquen</div>
+          <canvas id="qrCanvas"></canvas>
+          <div class="share-row">
+            <button class="btn-ghost" onclick="downloadQR()">
+              <i class="ti ti-download"></i> Descargar
+            </button>
+            <button class="btn-ghost" onclick="shareQR()">
+              <i class="ti ti-share"></i> Compartir
+            </button>
+          </div>
+          <button class="btn-main" onclick="finishOnboarding()">
+            Continuar a la app <i class="ti ti-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- ERROR -->
+      <div class="err-box" id="authErr"></div>
+
+    </div><!-- /modal-body -->
+  </div>
+</div>
+
+<!-- ── MODAL DE PRIVACIDAD (NUEVO CON BOTÓN DE ACEPTAR) ── -->
+<div class="privacy-overlay" id="privacyOverlay">
+  <div class="privacy-modal">
+    <button class="close-privacy" onclick="closePrivacyPolicy()"><i class="ti ti-x"></i></button>
+    <h2>📋 Aviso de Privacidad</h2>
+    <p><strong>LLevitrae</strong> — De acuerdo con la <strong>Ley No. 149 de Protección de Datos Personales</strong> de la República de Cuba.</p>
+
+    <p><strong>1. Responsable del tratamiento</strong><br>
+    LLevitrae es el responsable del tratamiento de sus datos personales.</p>
+
+    <p><strong>2. Datos que recopilamos</strong><br>
+    Para la prestación de nuestro servicio de mensajería, recopilamos:</p>
+    <ul>
+      <li>Nombre y apellidos</li>
+      <li>Carnet de identidad (CI)</li>
+      <li>Correo electrónico</li>
+      <li>Número de teléfono</li>
+      <li>(Para repartidores) Vehículo y zona de trabajo</li>
+    </ul>
+
+    <p><strong>3. Finalidad del tratamiento</strong><br>
+    Sus datos serán utilizados exclusivamente para:</p>
+    <ul>
+      <li>Identificarle como usuario de la plataforma</li>
+      <li>Gestionar los servicios de mensajería solicitados</li>
+      <li>Comunicarnos con usted sobre el estado de sus envíos</li>
+      <li>Cumplir con obligaciones legales aplicables</li>
+    </ul>
+
+    <p><strong>4. Consentimiento</strong><br>
+    Al marcar la casilla de aceptación, usted otorga su <strong>consentimiento libre, expreso e informado</strong> para el tratamiento de sus datos personales conforme a esta política.</p>
+
+    <p><strong>5. Compartición con terceros</strong><br>
+    Sus datos no serán cedidos a terceros sin su consentimiento explícito, salvo obligación legal.</p>
+
+    <p><strong>6. Seguridad</strong><br>
+    Implementamos medidas técnicas y organizativas para proteger sus datos contra accesos no autorizados, pérdida o alteración.</p>
+
+    <p><strong>7. Derechos del titular</strong><br>
+    Usted tiene derecho a:</p>
+    <ul>
+      <li><strong>Acceder</strong> a sus datos personales</li>
+      <li><strong>Rectificar</strong> datos inexactos</li>
+      <li><strong>Cancelar</strong> u oponerse al tratamiento</li>
+      <li><strong>Actualizar</strong> su información</li>
+    </ul>
+    <p>Para ejercer estos derechos, escriba a: <strong>privacidad@llevitrae.com</strong></p>
+
+    <p><strong>8. Conservación</strong><br>
+    Conservamos sus datos mientras mantenga su cuenta activa. Tras su cancelación, los datos serán bloqueados por el plazo legalmente establecido.</p>
+
+    <p style="font-size:11px;color:#9ca3af;text-align:center;margin-top:16px;border-top:1px solid #f3f4f6;padding-top:12px;">
+      Última actualización: julio 2026
+    </p>
+
+    <!-- ✅ BOTÓN DE ACEPTAR DENTRO DEL MODAL -->
+    <button class="privacy-accept-btn" onclick="acceptPrivacy()">
+      ✅ Aceptar y continuar
+    </button>
+  </div>
+</div>
+
+<script>
+  // ── GLOBALS ──
+  var sb = null;
+  var authRole = null;
+  var pendingReg = null;
+  var currentProfile = null;
+  var qrDataUrl = null;
+
+  // Variable para saber si el usuario ya aceptó la privacidad en esta sesión
+  var privacyAccepted = false;
+
+  const $ = id => document.getElementById(id);
+
+  // ── DETECTAR SI VIENE DE CIERRE DE SESIÓN ──
+  (function checkLogout() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('logout') === 'true') {
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      setTimeout(() => {
+        showAuth('client');
+      }, 300);
+    }
+  })();
+
+  function showErr(msg) {
+    const e = $('authErr');
+    e.textContent = msg; e.style.display = 'block';
+    e.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  function hideErr() { $('authErr').style.display = 'none'; }
+
+  // ── INIT SUPABASE ──
+  sb = supabase.createClient(
+    'https://sjeeqxiormfjmbgfwhao.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqZWVxeGlvcm1mam1iZ2Z3aGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMjkxNjksImV4cCI6MjA5NTgwNTE2OX0.z5mv_xMSS1z6yFU3JoyXMw4f6Gd7jr_5A3L8FM_iUMk'
+  );
+
+  // ── SESIÓN ACTIVA AL CARGAR ──
+  window.addEventListener('load', async () => {
+    try {
+      const { data: { user }, error: userErr } = await sb.auth.getUser();
+      if (userErr || !user) return;
+
+      const { data: prof } = await sb.from('profiles').select('role').eq('id', user.id).single();
+      if (!prof) return;
+
+      if (prof.role === 'client') {
+        window.location.href = 'cliente.html';
+      } else if (prof.role === 'rider') {
+        window.location.href = 'repartidor.html';
+      }
+    } catch(e) { console.error('Error verificando sesión:', e); }
+  });
+
+  // ── ABRIR MODAL ──
+  function showAuth(role) {
+    authRole = role;
+    privacyAccepted = false; // Resetear aceptación al abrir
+    const isClient = role === 'client';
+
+    $('authTitle').textContent = 'Iniciar sesión';
+    $('authRoleLabel').textContent = isClient ? 'Cliente' : 'Repartidor';
+    $('authRoleBadge').className = 'role-badge ' + role;
+    $('authRoleBadge').querySelector('i').className = isClient ? 'ti ti-user' : 'ti ti-bike';
+
+    switchTab('login');
+    $('authModal').classList.add('show');
+    $('authModalBox').scrollTop = 0;
+  }
+
+  function closeAuth() {
+    $('authModal').classList.remove('show');
+    hideErr();
+    switchTab('login');
+  }
+
+  // ── TABS ──
+  function switchTab(t) {
+    $('panelLogin').style.display = t === 'login'    ? 'block' : 'none';
+    $('panelReg').style.display   = t === 'register' ? 'block' : 'none';
+    $('panelOtp').style.display   = 'none';
+    $('panelQR').style.display    = 'none';
+    $('authTabs').style.display   = '';
+    $('tabLogin').classList.toggle('active', t === 'login');
+    $('tabReg').classList.toggle('active', t === 'register');
+    $('riderExtras').style.display = (t === 'register' && authRole === 'rider') ? 'block' : 'none';
+    hideErr();
+    $('authModalBox').scrollTop = 0;
+  }
+
+  // ── LOGIN ──
+  async function doLogin() {
+    const email = $('loginEmail').value.trim();
+    const pass  = $('loginPass').value;
+    if (!email || !pass) return showErr('Completa todos los campos');
+    if (!sb) return showErr('Cargando... intenta en un momento.');
+    $('loginBtn').disabled = true;
+    $('loginBtn').textContent = 'Entrando...';
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    $('loginBtn').disabled = false;
+    $('loginBtn').innerHTML = '<i class="ti ti-login"></i> Entrar';
+    if (error) return showErr(
+      error.message === 'Invalid login credentials'
+        ? 'Correo o contraseña incorrectos'
+        : error.message
+    );
+    const { data: prof } = await sb.from('profiles').select('*').eq('id', data.user.id).single();
+    if (!prof) return showErr('Perfil no encontrado.');
+    if (prof.role !== authRole) return showErr(
+      `Esta cuenta es de tipo "${prof.role === 'client' ? 'Cliente' : 'Repartidor'}", no "${authRole === 'client' ? 'Cliente' : 'Repartidor'}"`
+    );
+    onLoginSuccess(prof, false);
+  }
+
+  // ── REGISTRO ──
+  async function doRegister() {
+    if (!sb) return showErr('Cargando... intenta en un momento.');
+
+    // 🔐 VERIFICAR QUE EL USUARIO HAYA ACEPTADO LA PRIVACIDAD
+    if (!privacyAccepted) {
+      return showErr('Debes leer y aceptar el Aviso de Privacidad para continuar.');
+    }
+
+    const name    = $('rName').value.trim();
+    const last    = $('rLast').value.trim();
+    const ci      = $('rCI').value.trim();
+    const email   = $('rEmail').value.trim();
+    const phone   = $('rPhone').value.trim();
+    const pass    = $('rPass').value;
+    const vehicle = $('rVehicle')?.value || '';
+    const zone    = $('rZone')?.value.trim() || '';
+
+    if (!name || !last || !ci || !email || !phone || !pass)
+      return showErr('Todos los campos son obligatorios');
+    if (ci.length !== 11)
+      return showErr('El carnet de identidad debe tener exactamente 11 dígitos');
+    if (pass.length < 6)
+      return showErr('La contraseña debe tener al menos 6 caracteres');
+    if (authRole === 'rider' && (!vehicle || !zone))
+      return showErr('Completa el vehículo y la zona de trabajo');
+
+    hideErr();
+
+    $('regBtn').disabled = true;
+    $('regBtn').textContent = 'Creando cuenta...';
+    const userCode = 'LLV-' + Math.random().toString(36).substring(2,7).toUpperCase();
+
+    const { data, error } = await sb.auth.signUp({
+      email, password: pass,
+      options: { data: { full_name: name + ' ' + last, phone, role: authRole } }
+    });
+
+    if (error) {
+      $('regBtn').disabled = false;
+      $('regBtn').innerHTML = '<i class="ti ti-user-plus"></i> Crear cuenta';
+      return showErr(error.message);
+    }
+
+    // 🔧 CORRECCIÓN: Guardar todos los campos incluyendo CI y user_code
+    const profileUpdate = {
+      ci: ci,
+      phone: phone,
+      user_code: userCode,
+      full_name: name + ' ' + last,
+      role: authRole,
+      consent_given_at: new Date().toISOString(),
+      consent_version: '1.0'
+    };
+
+    const { error: profileError } = await sb
+      .from('profiles')
+      .update(profileUpdate)
+      .eq('id', data.user.id);
+
+    if (profileError) {
+      console.error('Error guardando perfil:', profileError);
+      $('regBtn').disabled = false;
+      $('regBtn').innerHTML = '<i class="ti ti-user-plus"></i> Crear cuenta';
+      return showErr('Error al guardar datos: ' + profileError.message);
+    }
+
+    // Guardar datos de repartidor si corresponde
+    if (authRole === 'rider') {
+      const { error: riderError } = await sb.from('riders').upsert({
+        profile_id: data.user.id,
+        vehicle: vehicle,
+        zone: zone,
+        deliveries_count: 0,
+        is_active: true
+      }, { onConflict: 'profile_id' });
+
+      if (riderError) {
+        console.error('Error guardando datos de repartidor:', riderError);
+        // No mostramos error crítico, el perfil ya se guardó
+      }
+    }
+
+    $('regBtn').textContent = 'Entrando...';
+    const { data: loginData, error: loginErr } = await sb.auth.signInWithPassword({
+      email, password: pass
+    });
+
+    $('regBtn').disabled = false;
+    $('regBtn').innerHTML = '<i class="ti ti-user-plus"></i> Crear cuenta';
+
+    if (loginErr) return showErr('Cuenta creada. Inicia sesión manualmente.');
+
+    await new Promise(r => setTimeout(r, 500));
+    const { data: prof } = await sb.from('profiles').select('*').eq('id', loginData.user.id).single();
+    if (!prof) return showErr('Error al cargar el perfil.');
+
+    // Verificar que el user_code se haya guardado correctamente
+    if (!prof.user_code) {
+      console.warn('user_code no se guardó, generando uno nuevo...');
+      const newCode = 'LLV-' + Math.random().toString(36).substring(2,7).toUpperCase();
+      await sb.from('profiles').update({ user_code: newCode }).eq('id', prof.id);
+      prof.user_code = newCode;
+    }
+
+    pendingReg = null;
+    onLoginSuccess(prof, true);
+  }
+
+  // ── QR ──
+  async function showQRPanel(prof) {
+    let code = prof.user_code;
+    
+    // Si no tiene código, intentar obtenerlo de la base de datos
+    if (!code) {
+      for (let i = 0; i < 15 && !code; i++) {
+        await new Promise(r => setTimeout(r, 200));
+        const { data: fresh } = await sb.from('profiles').select('user_code,ci').eq('id', prof.id).single();
+        code = fresh?.user_code;
+        if (fresh?.ci && !prof.ci) prof.ci = fresh.ci;
+        
+        // Si aún no tiene código, generarlo y guardarlo
+        if (i === 10 && !code) {
+          const newCode = 'LLV-' + Math.random().toString(36).substring(2,7).toUpperCase();
+          await sb.from('profiles').update({ user_code: newCode }).eq('id', prof.id);
+          code = newCode;
+          prof.user_code = code;
+        }
+      }
+    }
+    
+    // Si después de todo sigue sin código, generar uno
+    if (!code) {
+      code = 'LLV-' + Math.random().toString(36).substring(2,7).toUpperCase();
+      await sb.from('profiles').update({ user_code: code }).eq('id', prof.id);
+      prof.user_code = code;
+    }
+    
+    $('qrCode').textContent = code;
+    const ci = prof.ci || '';
+    const d9 = parseInt(ci[9]);
+    $('qrGenero').textContent = (!isNaN(d9) && d9 % 2 !== 0) ? 'a' : 'o';
+
+    try {
+      await QRCode.toCanvas($('qrCanvas'), code, {
+        width: 190, margin: 2,
+        color: { dark: '#111827', light: '#ffffff' }
+      });
+      qrDataUrl = $('qrCanvas').toDataURL('image/png');
+    } catch(e) {
+      console.error('Error generando QR:', e);
+    }
+
+    $('panelOtp').style.display = 'none';
+    $('panelQR').style.display  = 'block';
+    $('authTabs').style.display = 'none';
+    $('authModalBox').scrollTop = 0;
+  }
+
+  function downloadQR() {
+    if (!qrDataUrl) return;
+    const a = document.createElement('a');
+    a.href = qrDataUrl; a.download = 'codigo-llevitrae.png'; a.click();
+  }
+
+  async function shareQR() {
+    if (navigator.share && qrDataUrl) {
+      try {
+        const blob = await (await fetch(qrDataUrl)).blob();
+        const file = new File([blob], 'llevitrae-codigo.png', { type: 'image/png' });
+        await navigator.share({ title: 'Mi código LLevitrae', files: [file] });
+      } catch(e) {}
+    } else {
+      await navigator.clipboard?.writeText($('qrCode').textContent);
+      alert('Código copiado: ' + $('qrCode').textContent);
+    }
+  }
+
+  function finishOnboarding() {
+    closeAuth();
+    onEnterApp(currentProfile);
+  }
+
+  // ── SESSION ──
+  function onLoginSuccess(prof, isFirst) {
+    currentProfile = prof;
+    if (isFirst) {
+      showQRPanel(prof);
+    } else {
+      closeAuth();
+      onEnterApp(prof);
+    }
+  }
+
+  function onEnterApp(prof) {
+    if (prof.role === 'client') {
+      window.location.href = 'cliente.html';
+    } else {
+      window.location.href = 'repartidor.html';
+    }
+  }
+
+  // ── PRIVACIDAD: MOSTRAR AVISO ──
+  function showPrivacyPolicy() {
+    document.getElementById('privacyOverlay').classList.add('show');
+  }
+
+  function closePrivacyPolicy() {
+    document.getElementById('privacyOverlay').classList.remove('show');
+  }
+
+  // ── ACEPTAR PRIVACIDAD (NUEVO) ──
+  function acceptPrivacy() {
+    privacyAccepted = true;
+    closePrivacyPolicy();
+    // Mostrar un pequeño feedback visual
+    const link = document.querySelector('.privacy-link');
+    if (link) {
+      link.textContent = '✅ Aviso de Privacidad aceptado';
+      link.style.color = '#15803d';
+      link.style.cursor = 'default';
+      link.style.textDecoration = 'none';
+    }
+    // Limpiar error si existía
+    hideErr();
+  }
+
+  // Cerrar el modal de privacidad al hacer clic fuera
+  document.getElementById('privacyOverlay').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closePrivacyPolicy();
+    }
+  });
+
+  // ── FUNCIÓN PARA CERRAR SESIÓN ──
+  window.logout = async function() {
+    if (!confirm('¿Cerrar sesión?')) return;
+    try {
+      if (window.stopLocationTracking) {
+        window.stopLocationTracking();
+      }
+      await sb.auth.signOut();
+      window.location.href = 'index.html?logout=true';
+    } catch(e) {
+      console.error('Error al cerrar sesión:', e);
+      window.location.href = 'index.html?logout=true';
+    }
+  };
+
+  window.doLogout = window.logout;
+
+</script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js")
+        .then(r => console.log("SW registrado:", r.scope))
+        .catch(e => console.warn("SW error:", e));
+    });
+  }
+</script>
+</body>
+</html>
